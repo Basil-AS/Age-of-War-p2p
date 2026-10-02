@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, ageName, leave, requestRematch, setMusicOn, setSpeed, setVol, toggleMenu, tr } from '../lib/app.svelte';
+  import VersionSwitch from '../../ui/VersionSwitch.svelte';
   const h = $derived(app.hud);
   const done = $derived(!!h && h.winner !== -1);
   const mm = $derived(h ? `${Math.floor(h.time / 60)}:${String(Math.floor(h.time % 60)).padStart(2, '0')}` : '');
@@ -45,6 +46,7 @@
       {/if}
       <button class="btn" onclick={() => document.documentElement.requestFullscreen?.().catch(() => {})}>⛶ {tr('fullscreen')}</button>
       <button class="btn btn-ghost" onclick={leave}>{tr('leave')}</button>
+      <VersionSwitch current="lite" block />
     </div>
   </div>
 {/if}

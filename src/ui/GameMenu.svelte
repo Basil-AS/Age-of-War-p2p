@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, leave, setMusicOn, setSfx, setSpeed, toggleMenu, tr } from '../lib/app.svelte';
+  import VersionSwitch from './VersionSwitch.svelte';
   const goFull = () => document.documentElement.requestFullscreen?.().catch(() => {});
 </script>
 
@@ -14,5 +15,6 @@
     {/if}
     <button class="btn" onclick={goFull}>⛶ {tr('fullscreen')}</button>
     <button class="btn btn-ghost" onclick={leave}>{tr('leave')}</button>
+    <VersionSwitch current="original" block />
   </div>
 </div>

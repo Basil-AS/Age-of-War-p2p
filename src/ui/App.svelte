@@ -7,6 +7,7 @@
   import Result from './Result.svelte';
   import Settings from './Settings.svelte';
   import Status from './Status.svelte';
+  import VersionSwitch from './VersionSwitch.svelte';
 
   let canvas: HTMLCanvasElement;
   onMount(() => {
@@ -26,6 +27,7 @@
 {:else}
   <Status />
   {#if app.phase === 'title' && app.overlay === 'none'}
+    <VersionSwitch current="original" />
     <button class="glass fixed top-2 right-2 z-20 rounded-xl size-10 grid place-items-center text-lg" aria-label={tr('settings')} onclick={() => (app.overlay = 'settings')}>⚙️</button>
   {/if}
   {#if app.phase === 'game'}

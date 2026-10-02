@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, hostRoom, joinRoom, manualStart, setDifficulty, setLang, setCompat, setMusicOn, setName, setVol, startSolo, tr, trList } from '../lib/app.svelte';
+  import VersionSwitch from '../../ui/VersionSwitch.svelte';
   import type { Difficulty } from '../sim/types';
 
   let panel = $state<'main' | 'ai' | 'friend' | 'howto' | 'settings' | 'about'>('main');
@@ -15,6 +16,7 @@
 </script>
 
 <div class="fixed inset-0 menu-bg overflow-auto">
+  <VersionSwitch current="lite" />
   <div class="min-h-full flex flex-col items-center justify-center gap-6 p-5">
     <div class="text-center">
       <h1 class="title text-5xl sm:text-7xl font-black text-amber-300">{tr('title')}</h1>

@@ -22,3 +22,11 @@ test('launcher offers both versions; lite starts a solo game', async ({ page }) 
   await page.waitForTimeout(1500);
   expect(errs).toEqual([]);
 });
+
+test('switch between versions from both menus', async ({ page }) => {
+  await page.goto('/lite.html');
+  await page.getByTestId('switch-version').click({ timeout: 60_000 });
+  await page.waitForURL(/original\.html/);
+  await page.getByTestId('switch-version').click({ timeout: 90_000 });
+  await page.waitForURL(/lite\.html/);
+});
