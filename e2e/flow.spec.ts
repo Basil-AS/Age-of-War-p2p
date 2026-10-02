@@ -54,9 +54,9 @@ test.describe('phone', () => {
     await page.goto('/original.html');
     await ready(page);
     expect(await page.evaluate(() => (window as unknown as W).__aow.orig?.assets.quality)).toBe('sd');
-    const a = await page.evaluate(() => (window as unknown as W).__aow.toPage(0, 0));
-    const b = await page.evaluate(() => (window as unknown as W).__aow.toPage(650, 450));
-    expect(b.y - a.y).toBeLessThanOrEqual(413);
+    const v = await page.evaluate(() => (window as unknown as { __aow: { orig: { viewW: number } } }).__aow.orig.viewW);
+    expect(v).toBeGreaterThanOrEqual(650);
+    expect(v).toBeLessThan(1000);
     expect(await page.locator('.rotate-hint').isVisible()).toBe(false);
     expect(errs).toEqual([]);
   });

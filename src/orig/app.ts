@@ -21,6 +21,7 @@ export interface OrigHooks {
 const W = 650,
   H = 450;
 const MAX_VIEW_W = 2000;
+const MIN_H = 280;
 const SKY = 0x3fb1ff;
 const DIRT = 0x6b4a26;
 
@@ -44,8 +45,12 @@ export class OrigApp {
   private loadingBuckets = new Set<number>();
   private keyHandler = (e: KeyboardEvent) => this.onKey(e);
   private fit = 1;
-  /** logical width of the visible world window (650 … 2000) */
+  /** logical width of the visible world window (650 on 16:9 — the original proportions — up to 2000) */
   viewW = W;
+  /** screen pixels per world pixel */
+  get scale() {
+    return this.fit;
+  }
   /** height in CSS px of the HTML control bar at the bottom: the world is laid out above it */
   private bottomInset = 0;
   private drag: { x: number; scroll: number; moved: boolean } | null = null;
@@ -158,22 +163,30 @@ export class OrigApp {
     const w = this.app.screen.width,
       h = this.app.screen.height;
     const availH = Math.max(120, h - this.bottomInset);
-    let fit = availH / H;
+    // Keep the original proportions: the window shows ~650 world px across (units are as big, and the 1000 px
+    // map as wide, as in the original). On wide screens that crops some empty sky from the top instead of
+    // shrinking the units; at least MIN_H of the 450 px height always stays visible.
+    let fit = Math.min(w / W, availH / MIN_H);
+    fit = Math.max(fit, availH / H); // never show more than the full height
     let vw = w / fit;
     if (vw < W) {
-      // narrow window (portrait): fit the width instead and centre vertically
+      // narrow window (portrait): fit the width instead
       fit = w / W;
       vw = W;
     }
     vw = Math.min(vw, MAX_VIEW_W);
+    const hv = Math.min(H, availH / fit); // visible world height
     this.fit = fit;
     this.viewW = vw;
     this.root.scale.set(fit);
-    this.root.position.set((w - vw * fit) / 2, Math.max(0, (availH - H * fit) / 2));
+    // bottom-anchored: the ground stays just above the control bar, the sky is what gets cropped
+    const y = hv < H ? availH - H * fit : (availH - H * fit) / 2;
+    this.root.position.set((w - vw * fit) / 2, y);
     // crop whatever scrolls outside the visible window
     this.root.mask = null;
     for (const c of this.root.children.filter((x) => x.label === 'mask')) c.destroy();
-    const m = new Graphics().rect(0, 0, vw, H).fill(0xffffff);
+    const top = hv < H ? H - hv : 0;
+    const m = new Graphics().rect(0, top, vw, H - top).fill(0xffffff);
     m.label = 'mask';
     this.root.addChild(m);
     this.root.mask = m;

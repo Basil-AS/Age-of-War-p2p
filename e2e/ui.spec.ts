@@ -92,18 +92,18 @@ test('pause menu freezes a solo game; resume continues; leave returns to the men
   await expect(page.getByTestId('main-menu')).toBeVisible();
 });
 
-test('battlefield scrolls with wheel on a narrow window and is centred on an ultra-wide one', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
+test('original proportions are kept: ~650 world px across on 16:9, the map still scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await startSolo(page);
-  const narrow = await g(page, (a) => ({ v: a.orig.viewW, s: a.orig.scene!.scroll }));
-  expect(narrow.v).toBeLessThan(1000);
-  await page.mouse.move(500, 300);
-  await page.mouse.wheel(300, 0);
-  await expect.poll(() => g(page, (a) => a.orig.scene!.scroll)).toBeLessThan(narrow.s);
+  const wide = await g(page, (a) => ({ v: a.orig.viewW, s: a.orig.scene!.scroll }));
+  expect(wide.v).toBeLessThan(700); // not the whole 1000 px map squeezed in: units stay big, the map stays wide
+  await page.mouse.move(900, 400);
+  await page.mouse.wheel(400, 0);
+  await expect.poll(() => g(page, (a) => a.orig.scene!.scroll)).toBeLessThan(wide.s - 100);
+  // ultra-wide shows a bit more, still scrollable
   await page.setViewportSize({ width: 2560, height: 1080 });
-  await expect.poll(() => g(page, (a) => a.orig.viewW)).toBeGreaterThan(1000);
-  const wide = await g(page, (a) => ({ v: a.orig.scene!.viewW, s: a.orig.scene!.scroll }));
-  expect(wide.s).toBeCloseTo((wide.v - 1000) / 2, 0);
+  await expect.poll(() => g(page, (a) => a.orig.viewW)).toBeGreaterThan(wide.v);
+  expect(await g(page, (a) => a.orig.viewW)).toBeLessThan(1000);
 });
 
 test('full-window battlefield: canvas fills the window and the bar sits under the world', async ({ page }) => {

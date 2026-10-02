@@ -260,7 +260,7 @@ export class GameScene extends Container {
   update(dtMs: number) {
     const k = dtMs / 25; // original: per 40 fps frame
     const edge = Math.min(110, this.viewW * 0.14);
-    if (this.mx >= 0 && this.my > 90 && this.my < 450 && this.viewW < WORLD_W) {
+    if (this.mx >= 0 && this.my < 450 && this.viewW < WORLD_W) {
       if (this.mx > this.viewW - edge) this.setScroll(this.scroll - ((this.mx - (this.viewW - edge)) / 10) * k);
       if (this.mx < edge) this.setScroll(this.scroll + ((edge - this.mx) / 10) * k);
     }
