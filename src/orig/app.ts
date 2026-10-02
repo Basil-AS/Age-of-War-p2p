@@ -75,6 +75,10 @@ export class OrigApp {
       this.layout();
     });
     window.addEventListener('keydown', this.keyHandler);
+    // a solo game pauses by itself when the tab/app is backgrounded (online games keep running — the friend is waiting)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.match && !this.match.online && !this.paused) this.togglePause();
+    });
     this.layout();
     this.showTitle();
     this.start();

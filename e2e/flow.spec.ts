@@ -143,3 +143,16 @@ test('network check panel: probes run, a verdict and a copyable report appear', 
   const rows = await page.getByTestId('netcheck-results').locator('div.flex').count();
   expect(rows).toBeGreaterThan(8); // 5 STUN + TURN + 6 Nostr + 3 MQTT
 });
+
+test('solo game pauses by itself when the tab is hidden', async ({ page }) => {
+  await startSolo(page);
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  const f0 = await page.evaluate(() => (window as unknown as W).__aow.match!.sim.frame);
+  await page.waitForTimeout(2500);
+  const f1 = await page.evaluate(() => (window as unknown as W).__aow.match!.sim.frame);
+  expect(f1 - f0).toBeLessThan(5);
+});
