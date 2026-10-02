@@ -143,3 +143,93 @@ test('result screen: victory and defeat with Play again / Menu', async ({ page }
   await page.getByTestId('to-menu').click();
   await expect(page.getByTestId('main-menu')).toBeVisible();
 });
+
+test('keyboard camera: holding an arrow key glides smoothly (no jumps), releasing eases to a stop', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await startSolo(page);
+  // drive the scene with a fixed 60 fps clock so the check does not depend on this machine's frame rate
+  const r = await page.evaluate(() => {
+    const sc = (
+      window as unknown as {
+        __aow: { orig: { scene: { scroll: number; update(dt: number, a: number): void; setKeyDir(d: number): void } } };
+      }
+    ).__aow.orig.scene;
+    const run = (n: number) => {
+      const out: number[] = [];
+      for (let i = 0; i < n; i++) {
+        sc.update(16.67, 1);
+        out.push(sc.scroll);
+      }
+      return out;
+    };
+    sc.setKeyDir(1);
+    const hold = run(50);
+    sc.setKeyDir(0);
+    const release = run(60);
+    const rest = run(30);
+    return { hold, release, rest };
+  });
+  const d = (a: number[]) => a.slice(1).map((v, i) => (a[i] as number) - v); // positive = moved right
+  const hold = d(r.hold);
+  expect(hold.every((x) => x >= 0)).toBe(true); // monotone
+  expect(Math.max(...hold)).toBeLessThan(11); // ≤ 640 px/s at 60 fps: no key-repeat leaps
+  expect(hold[hold.length - 1]).toBeGreaterThan(hold[2] as number); // accelerates gradually
+  const jerk = Math.max(...hold.slice(1).map((v, i) => Math.abs(v - (hold[i] as number))));
+  expect(jerk).toBeLessThan(1.2); // speed changes in small steps
+  const rel = d(r.release);
+  expect(rel[0]).toBeGreaterThan(0); // keeps gliding after release …
+  expect(rel[rel.length - 1]).toBeLessThan(0.2); // … and comes to rest
+  expect(Math.abs((r.rest[29] as number) - (r.rest[0] as number))).toBeLessThan(0.5);
+});
+
+test('motion is interpolated between simulation ticks (units, flying shots) at any refresh rate', async ({ page }) => {
+  await startSolo(page);
+  await g(page, (a) => {
+    a.match!.sim.player(1).cash = 100000;
+    a.match!.sim.player(2).cash = 100000;
+  });
+  await page.keyboard.press('3');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as { __aow: { match: { sim: { units: { side: number }[] } } } }
+          ).__aow.match.sim.units.filter((u) => u.side === 1).length,
+      ),
+    )
+    .toBeGreaterThan(0);
+  const r = await page.evaluate(() => {
+    const w = window as unknown as {
+      __aow: {
+        match: { sim: { step(): void; units: { side: number; x: number; speed: number; dead?: boolean }[] } };
+        orig: {
+          paused: boolean;
+          setPaused(b: boolean): void;
+          scene: {
+            tick(): void;
+            update(dt: number, a: number): void;
+            unitsC: { children: { position: { x: number }; u: { side: number; speed: number } }[] };
+          };
+        };
+      };
+    };
+    const { match, orig } = w.__aow;
+    orig.setPaused(true);
+    for (let i = 0; i < 200 && !match.sim.units.some((u) => u.side === 1 && !u.dead); i++) match.sim.step();
+    match.sim.step();
+    orig.scene.tick();
+    const view = orig.scene.unitsC.children.find((c) => c.u.side === 1 && c.u.speed !== 0);
+    const xs: number[] = [];
+    for (const a of [0, 0.25, 0.5, 0.75, 1]) {
+      orig.scene.update(16, a);
+      xs.push(view?.position.x ?? NaN);
+    }
+    return xs;
+  });
+  expect(r.every(Number.isFinite)).toBe(true);
+  for (let i = 1; i < r.length; i++) expect(r[i] as number).toBeGreaterThanOrEqual(r[i - 1] as number);
+  expect(r[4]! - r[0]!).toBeLessThan(2); // one tick = at most ~0.7 px for a walker, spread over the 5 samples
+});

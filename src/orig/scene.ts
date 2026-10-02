@@ -3,6 +3,7 @@ import type { OrigAssets } from './assets';
 import { Atomic, Button, Clip, type Flash, TextField, walk } from './flash';
 import { Particles } from './particles';
 import { type Bullet, type Frag, GROUND, type OrigSim, type TurretInst, type Unit, WORLD_W } from './sim';
+import { Smooth } from './smooth';
 import type { OrigAudio } from './snd';
 import type { Cmd, Side, UnitData } from './types';
 
@@ -26,6 +27,8 @@ const BULLET_SPRITE: Record<string, number> = {
 };
 /** the camera may go a bit past the world edges so the whole base art is visible */
 const EDGE_PAD = 56;
+/** keyboard camera speed, world px per second */
+const KEY_SPEED = 640;
 const DEG = Math.PI / 180;
 const M = (m: { a: number; b: number; c: number; d: number; tx: number; ty: number }) =>
   new Matrix(m.a, m.b, m.c, m.d, m.tx, m.ty);
@@ -38,6 +41,7 @@ class UnitView extends Container {
   private aura: Container;
   private hb: Clip;
   private curLabel = '';
+  readonly sm = new Smooth();
   constructor(
     private scene: GameScene,
     readonly u: Unit,
@@ -79,11 +83,14 @@ class UnitView extends Container {
     this.on('pointerout', () => {
       this.hb.visible = false;
     });
+    this.sm.set(u.x, u.y);
     this.position.set(u.x, u.y);
-    this.refresh();
+    this.refresh(true);
   }
-  refresh() {
+  /** a simulation tick happened */
+  refresh(first = false) {
     const u = this.u;
+    if (!first) this.sm.push(u.x, u.y);
     const st = (u.data as UnitData).states[u.anim.label];
     if (st) {
       if (u.anim.label !== this.curLabel) {
@@ -97,7 +104,6 @@ class UnitView extends Container {
         this.img.visible = true;
       } else this.img.visible = false;
     }
-    this.position.set(u.x, u.y);
     this.aura.visible = u.ageAura && u.health > 0;
     const bar = (this.hb as Clip).named.hb;
     if (bar) bar.scale.x = Math.max(0, u.health / u.rhealth);
@@ -105,10 +111,16 @@ class UnitView extends Container {
   }
 }
 
+/** draw between the last two ticks */
+function unitFrame(v: UnitView, a: number) {
+  v.position.set(v.sm.x(a), v.sm.y(a));
+}
+
 class TurretView extends Container {
   private animC = new Container();
   private img = new Sprite();
   private inner = new Container();
+  readonly sm = new Smooth();
   constructor(
     private scene: GameScene,
     readonly t: TurretInst,
@@ -130,17 +142,24 @@ class TurretView extends Container {
     if (t.side === 2) this.inner.scale.y = -1;
     this.addChild(this.inner);
     this.position.set(t.rx, t.ry);
-    this.refresh();
+    this.sm.set(t.rx, t.ry, t.rotation);
+    this.refresh(true);
   }
-  refresh() {
+  refresh(first = false) {
+    if (!first) this.sm.push(this.t.rx, this.t.ry, this.t.rotation);
     const fr = this.scene.assets.frame(`s${this.t.data.clip.id}.${this.t.anim.frame}`);
     if (fr) {
       this.img.texture = fr.tex;
       this.img.position.set(fr.ox, fr.oy);
       this.img.visible = true;
     } else this.img.visible = false;
-    this.rotation = this.t.rotation * DEG;
+    this.rotation = this.sm.r(1) * DEG;
   }
+}
+/** a flying thing (bullet, debris): a holder container around its sprite, reused from a pool */
+interface Prop {
+  holder: Container;
+  sm: Smooth;
 }
 
 export interface SceneOpts {
@@ -169,14 +188,19 @@ export class GameScene extends Container {
   private fxC = new Container();
   private units = new Map<number, UnitView>();
   private turrets = new Map<TurretInst, TurretView>();
-  private bullets = new Map<Bullet, Sprite>();
-  private frags = new Map<Frag, Sprite>();
-  private specialSprites = new Map<unknown, Container>();
+  private bullets = new Map<Bullet, Prop>();
+  private frags = new Map<Frag, Prop>();
+  private specialSprites = new Map<unknown, { box: Container; sm: Smooth }>();
+  private bulletPool = new Map<string, Prop[]>();
+  private fragPool = new Map<string, Prop[]>();
   private baseOwn: Clip;
   private baseEnemy: Clip;
   /** width of the visible window in world pixels (650 in the original; wider on widescreen displays) */
   viewW = 650;
   scroll = 0;
+  private target = 0;
+  private keyDir: -1 | 0 | 1 = 0;
+  private vel = 0;
   private shake = 0;
   /** pointer position in world-view coordinates (set by the app), -1 = outside */
   mx = -1;
@@ -239,34 +263,84 @@ export class GameScene extends Container {
       for (const c of b.children) if (!keep.has(c)) c.visible = false;
     }
     this.eventMode = 'passive';
-    this.setScroll(EDGE_PAD);
+    this.setScroll(EDGE_PAD, true);
     this.tick();
+  }
+
+  private takeProp(pool: Map<string, Prop[]>, key: string, make: () => Container): Prop {
+    const free = pool.get(key)?.pop();
+    if (free) {
+      free.holder.visible = true;
+      return free;
+    }
+    const holder = new Container();
+    holder.addChild(make());
+    (key.startsWith('b') || key.startsWith('s') ? this.bulletsC : this.fxC).addChild(holder);
+    return { holder, sm: new Smooth() };
+  }
+  private freeProp(pool: Map<string, Prop[]>, key: string, p: Prop) {
+    p.holder.visible = false;
+    (pool.get(key) ?? pool.set(key, []).get(key))?.push(p);
+  }
+
+  /** place everything between the last two simulation ticks (alpha 0…1) so motion is smooth at any refresh rate */
+  private interp(a: number) {
+    for (const c of this.unitsC.children) unitFrame(c as UnitView, a);
+    for (const v of this.turrets.values()) v.rotation = v.sm.r(a) * DEG;
+    for (const v of this.bullets.values()) {
+      v.holder.position.set(v.sm.x(a), v.sm.y(a));
+      v.holder.rotation = v.sm.r(a) * DEG;
+    }
+    for (const v of this.frags.values()) {
+      v.holder.position.set(v.sm.x(a), v.sm.y(a));
+      v.holder.rotation = v.sm.r(a) * DEG;
+    }
+    for (const c of this.specialSprites.values()) c.box.position.set(c.sm.x(a), c.sm.y(a));
   }
 
   setViewW(w: number) {
     this.viewW = w;
-    this.setScroll(this.scroll);
+    this.setScroll(this.target, true);
   }
   /** scroll limits: the whole 1000 px world is visible on very wide screens, so it is simply centred */
-  setScroll(v: number) {
-    if (this.viewW >= WORLD_W) this.scroll = (this.viewW - WORLD_W) / 2;
-    else this.scroll = Math.max(this.viewW - WORLD_W - EDGE_PAD, Math.min(EDGE_PAD, v));
+  private clampScroll(v: number) {
+    if (this.viewW >= WORLD_W) return (this.viewW - WORLD_W) / 2;
+    return Math.max(this.viewW - WORLD_W - EDGE_PAD, Math.min(EDGE_PAD, v));
+  }
+  /** move the camera goal; the picture eases towards it (snap = jump, used while dragging) */
+  setScroll(v: number, snap = false) {
+    this.target = this.clampScroll(v);
+    if (snap) this.scroll = this.target;
   }
   nudge(dx: number) {
-    this.setScroll(this.scroll + dx);
+    this.setScroll(this.target + dx);
+  }
+  /** held arrow keys / A D: -1 = look left, +1 = look right, 0 = none */
+  setKeyDir(d: -1 | 0 | 1) {
+    this.keyDir = d;
   }
 
-  /** per rendered frame: camera edge-scroll (mouse near the left/right edge), screen shake */
-  update(dtMs: number) {
-    const k = dtMs / 25; // original: per 40 fps frame
+  /** per rendered frame: eased camera, edge-scroll (mouse near the left/right edge), screen shake, tick interpolation */
+  update(dtMs: number, alpha = 1) {
+    const dt = Math.min(100, dtMs);
+    const k = dt / 25; // original: per 40 fps frame
     const edge = Math.min(110, this.viewW * 0.14);
     if (this.mx >= 0 && this.my < 450 && this.viewW < WORLD_W) {
-      if (this.mx > this.viewW - edge) this.setScroll(this.scroll - ((this.mx - (this.viewW - edge)) / 10) * k);
-      if (this.mx < edge) this.setScroll(this.scroll + ((edge - this.mx) / 10) * k);
+      if (this.mx > this.viewW - edge) this.setScroll(this.target - ((this.mx - (this.viewW - edge)) / 10) * k);
+      if (this.mx < edge) this.setScroll(this.target + ((edge - this.mx) / 10) * k);
     }
+    // keyboard: smooth acceleration / deceleration instead of key-repeat steps
+    const want = -this.keyDir * KEY_SPEED;
+    this.vel += (want - this.vel) * (1 - Math.exp(-dt / (this.keyDir ? 120 : 90)));
+    if (Math.abs(this.vel) < 0.5 && !this.keyDir) this.vel = 0;
+    if (this.vel) this.setScroll(this.target + (this.vel * dt) / 1000);
+    // ease the picture towards the goal (frame-rate independent)
+    this.scroll += (this.target - this.scroll) * (1 - Math.exp(-dt / 55));
+    if (Math.abs(this.target - this.scroll) < 0.02) this.scroll = this.target;
     this.shake = Math.max(0, this.shake - 0.4 * k);
     this.cam.x = this.scroll + (this.shake ? (Math.random() - 0.5) * this.shake : 0);
     this.cam.y = this.shake ? (Math.random() - 0.5) * this.shake : 0;
+    this.interp(Math.max(0, Math.min(1, alpha)));
   }
 
   /** once per simulation tick (40 Hz) */
@@ -348,51 +422,40 @@ export class GameScene extends Container {
         this.turrets.delete(t);
       }
 
-    // bullets & damaging particles
+    // bullets & damaging particles (pooled: eggs/arrows fly by the dozen, creating/destroying sprites would stutter)
     const seenB = new Set<Bullet>();
     for (const b of sim.bullets) {
       seenB.add(b);
-      let s = this.bullets.get(b);
-      if (!s) {
-        const sp = this.assets.sprite(`s${BULLET_SPRITE[b.kind]}.1`);
-        s = sp ?? new Sprite();
-        this.bullets.set(b, s);
-        const c = new Container();
-        c.addChild(s);
-        this.bulletsC.addChild(c);
-        (s as Sprite & { holder?: Container }).holder = c;
-      }
-      const h = (s as Sprite & { holder?: Container }).holder as Container;
-      h.position.set(b.x, b.y);
-      h.rotation = b.rot * DEG;
-      if (b.kind === 's1' || b.kind === 's2') h.scale.set(1.5);
+      let v = this.bullets.get(b);
+      if (!v) {
+        v = this.takeProp(this.bulletPool, b.kind, () => {
+          const sp = this.assets.sprite(`s${BULLET_SPRITE[b.kind]}.1`) ?? new Sprite();
+          return sp;
+        });
+        if (b.kind === 's1' || b.kind === 's2') v.holder.scale.set(1.5);
+        v.sm.set(b.x, b.y, b.rot);
+        this.bullets.set(b, v);
+      } else v.sm.push(b.x, b.y, b.rot);
     }
-    for (const [b, s] of this.bullets)
+    for (const [b, v] of this.bullets)
       if (!seenB.has(b)) {
-        (s as Sprite & { holder?: Container }).holder?.destroy({ children: true });
+        this.freeProp(this.bulletPool, b.kind, v);
         this.bullets.delete(b);
       }
     const seenF = new Set<Frag>();
     for (const f of sim.frags) {
       seenF.add(f);
-      let s = this.frags.get(f);
-      if (!s) {
+      let v = this.frags.get(f);
+      if (!v) {
         const id = f.kind === 5 ? 899 : f.kind === 8 ? 948 : 898;
-        const sp = this.assets.sprite(`s${id}.1`) ?? new Sprite();
-        const c = new Container();
-        c.addChild(sp);
-        this.fxC.addChild(c);
-        (sp as Sprite & { holder?: Container }).holder = c;
-        this.frags.set(f, sp);
-        s = sp;
-      }
-      const h = (s as Sprite & { holder?: Container }).holder as Container;
-      h.position.set(f.x, f.y);
-      h.rotation = f.rot * DEG;
+        v = this.takeProp(this.fragPool, String(id), () => this.assets.sprite(`s${id}.1`) ?? new Sprite());
+        v.sm.set(f.x, f.y, f.rot);
+        this.frags.set(f, v);
+      } else v.sm.push(f.x, f.y, f.rot);
     }
-    for (const [f, s] of this.frags)
+    for (const [f, v] of this.frags)
       if (!seenF.has(f)) {
-        (s as Sprite & { holder?: Container }).holder?.destroy({ children: true });
+        this.freeProp(this.fragPool, String(f.kind === 5 ? 899 : f.kind === 8 ? 948 : 898), v);
         this.frags.delete(f);
       }
 
@@ -404,23 +467,23 @@ export class GameScene extends Container {
       let c = this.specialSprites.get(sp);
       const id = sp.kind === 4 ? 973 : 976;
       if (!c) {
-        c = new Container();
-        this.fxC.addChild(c);
+        c = { box: new Container(), sm: new Smooth() };
+        this.fxC.addChild(c.box);
+        c.sm.set(sp.x, sp.y);
         this.specialSprites.set(sp, c);
-      }
+      } else c.sm.push(sp.x, sp.y);
       const fr = this.assets.frame(`s${id}.${sp.kind === 5 ? Math.min(57, sp.frame) : 1}`);
-      c.removeChildren();
+      c.box.removeChildren();
       if (fr) {
         const s = new Sprite(fr.tex);
         s.position.set(fr.ox, fr.oy);
-        c.addChild(s);
+        c.box.addChild(s);
       }
-      c.position.set(sp.x, sp.y);
-      c.scale.x = sp.side === 2 ? -1 : 1;
+      c.box.scale.x = sp.side === 2 ? -1 : 1;
     }
     for (const [k, c] of this.specialSprites)
       if (!seenS.has(k)) {
-        c.destroy({ children: true });
+        c.box.destroy({ children: true });
         this.specialSprites.delete(k);
       }
 

@@ -87,6 +87,8 @@ export class OrigApp {
       this.layout();
     });
     window.addEventListener('keydown', this.keyHandler);
+    window.addEventListener('keyup', (e) => this.onKeyUp(e));
+    window.addEventListener('blur', () => this.scene?.setKeyDir(0));
     this.bindPointer(canvas);
     // a solo game pauses by itself when the tab/app is backgrounded (online games keep running — the friend is waiting)
     document.addEventListener('visibilitychange', () => {
@@ -135,7 +137,7 @@ export class OrigApp {
       if (this.drag && this.scene) {
         const dx = p.x - this.drag.x;
         if (Math.abs(dx) > 4) this.drag.moved = true;
-        this.scene.setScroll(this.drag.scroll + dx);
+        this.scene.setScroll(this.drag.scroll + dx, true);
       }
     });
     canvas.addEventListener('pointerdown', (e) => {
@@ -271,7 +273,7 @@ export class OrigApp {
       this.menu?.update(t.deltaMS);
       if (this.match && this.scene) {
         if (!this.paused) this.match.update(now);
-        this.scene.update(t.deltaMS);
+        this.scene.update(t.deltaMS, this.match.alpha);
         this.prefetchEras();
         const w = this.match.sim.winner;
         if (w && !this.resultShown) {
@@ -319,15 +321,24 @@ export class OrigApp {
       e.preventDefault();
       this.togglePause();
     } else if (k === 'escape') this.hooks.menu();
-    else if (k === 'arrowleft' || k === 'a') this.scene.nudge(60);
-    else if (k === 'arrowright' || k === 'd') this.scene.nudge(-60);
-    else if (k >= '1' && k <= '4') this.send({ t: 'tray', id: k === '4' ? 16 : (p.tech - 1) * 3 + Number(k) });
+    else if (k === 'arrowleft' || k === 'a') {
+      e.preventDefault();
+      this.scene.setKeyDir(-1);
+    } else if (k === 'arrowright' || k === 'd') {
+      e.preventDefault();
+      this.scene.setKeyDir(1);
+    } else if (k >= '1' && k <= '4') this.send({ t: 'tray', id: k === '4' ? 16 : (p.tech - 1) * 3 + Number(k) });
     else if (k === 'z' || k === 'x' || k === 'c') {
       const spot = this.freeSpot(me);
       if (spot) this.send({ t: 'turret', spot, id: (p.tech - 1) * 3 + 'zxc'.indexOf(k) + 1 });
     } else if (k === 'f') this.send({ t: 'addon' });
     else if (k === 'q') this.send({ t: 'special' });
     else if (k === 'e') this.send({ t: 'evolve' });
+  }
+
+  private onKeyUp(e: KeyboardEvent) {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowleft' || k === 'a' || k === 'arrowright' || k === 'd') this.scene?.setKeyDir(0);
   }
 
   destroy() {

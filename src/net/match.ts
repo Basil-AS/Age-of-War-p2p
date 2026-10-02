@@ -11,6 +11,8 @@ export interface Match {
   readonly side: Side;
   readonly online: boolean;
   readonly status: MatchStatus;
+  /** 0…1 progress into the next simulation tick (for smooth rendering between ticks) */
+  readonly alpha: number;
   speed: number;
   command(c: Cmd): void;
   update(now: number): void;
@@ -51,6 +53,9 @@ export class SoloMatch implements Match {
     }
     if (this.sim.winner) this.acc = 0;
   }
+  get alpha() {
+    return Math.min(1, this.acc / TICK_MS);
+  }
   send() {}
   destroy() {}
 }
@@ -70,6 +75,9 @@ export class OnlineMatch implements Match {
   }
   get status() {
     return this.ls.status;
+  }
+  get alpha() {
+    return this.ls.alpha;
   }
   get onTick() {
     return this.ls.onTick;

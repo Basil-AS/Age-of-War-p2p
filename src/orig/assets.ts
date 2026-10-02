@@ -22,19 +22,26 @@ interface Manifest {
 
 const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
 
-export type Quality = 'hd' | 'sd';
+export type Quality = 'uhd' | 'hd' | 'sd';
 
-/** hd = 3× art (≈7 MB per era, big GPU textures), sd = 2×. Auto: sd on phones/low-memory devices; `?q=hd|sd` or localStorage overrides. */
+/**
+ * sd = 2× art (phones / low memory), hd = 3× (full-HD desktops), uhd = 4.5× (retina / 4K desktops: the
+ * picture is drawn at ~4 screen px per art px there, so figures stay crisp). `?q=uhd|hd|sd` or localStorage override.
+ */
 export function pickQuality(): Quality {
   try {
     const q = new URLSearchParams(location.search).get('q') ?? localStorage.getItem('aow.q');
-    if (q === 'hd' || q === 'sd') return q;
+    if (q === 'uhd' || q === 'hd' || q === 'sd') return q;
   } catch {
     /* storage blocked */
   }
   const nav = navigator as Navigator & { deviceMemory?: number };
   const coarse = matchMedia('(pointer: coarse)').matches;
-  return coarse || (nav.deviceMemory !== undefined && nav.deviceMemory < 4) ? 'sd' : 'hd';
+  if (coarse || (nav.deviceMemory !== undefined && nav.deviceMemory < 4)) return 'sd';
+  // the game shows ~650 art px across the window width → screen pixels per art pixel
+  const need = (Math.max(window.innerWidth, window.innerHeight * 1.6) * (window.devicePixelRatio || 1)) / 650;
+  const roomy = nav.deviceMemory === undefined || nav.deviceMemory >= 8;
+  return need >= 3.4 && roomy ? 'uhd' : 'hd';
 }
 
 /** Lazy, bucketed access to the packed original artwork (core + ui up front, one bucket per era on demand). */
