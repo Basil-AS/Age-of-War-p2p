@@ -28,12 +28,12 @@ export default defineConfig({
       ? [
           {
             name: 'firefox',
-            testMatch: /cross-browser/,
+            testMatch: live ? /live\.spec/ : /cross-browser/,
             use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 720 } },
           },
           {
             name: 'webkit',
-            testMatch: /cross-browser/,
+            testMatch: live ? /live\.spec/ : /cross-browser/,
             use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 720 } },
           },
         ]
