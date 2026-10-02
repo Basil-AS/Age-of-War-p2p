@@ -10,6 +10,7 @@
       <span class={app.net.rtt > 150 ? 'text-rose-400' : app.net.rtt > 80 ? 'text-amber-300' : 'text-emerald-400'}>● {app.net.rtt}ms</span>
       <span class="text-slate-400 font-semibold" data-testid="via">{VIA_NAMES[app.lang][viaKind(app.net.via)]}</span>
       <span class="text-slate-300">{app.peerName}</span>
+      {#if app.net.routes.length > 1}<span class="text-slate-500 font-normal" title="routes">{app.net.routes.filter((r) => r.alive).length}/{app.net.routes.length} ↔</span>{/if}
     </div>
     {#if app.net.stalled}<div class="glass rounded-full px-3 py-0.5 text-xs text-amber-300 animate-pulse">{tr('waitingOpp')}</div>{/if}
     {#if app.net.desync}<div class="glass rounded-full px-3 py-0.5 text-xs text-rose-300 font-bold">{tr('desync')}</div>{/if}

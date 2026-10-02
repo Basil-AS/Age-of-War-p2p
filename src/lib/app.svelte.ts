@@ -1,6 +1,7 @@
 import { connectLadder, type Ladder, type RungId, type RungState } from '../net/connect';
 import { ManualPeer } from '../net/manual';
 import { type Match, OnlineMatch, SoloMatch } from '../net/match';
+import { MultiTransport } from '../net/multi';
 import { guestHandshake, hostHandshake } from '../net/session';
 import { type Msg, makeRoomCode, normalizeCode, type Transport } from '../net/transport';
 import { OrigApp } from '../orig/app';
@@ -61,6 +62,7 @@ export const app = $state({
     peerLeft: false,
     delay: 0,
     via: '' as RungId | 'manual' | '',
+    routes: [] as { id: string; rtt: number; alive: boolean; active: boolean }[],
   },
   rematch: { mine: false, theirs: false },
   result: { winner: 0 as 0 | 1 | 2, me: 1 as Side, online: false },
@@ -166,8 +168,13 @@ function refreshNet() {
     desync: s.desync,
     peerLeft: s.peerLeft,
     delay: s.delay,
-    via: match.online ? app.lobby.via : '',
+    via: match.online ? best() : '',
+    routes: transport instanceof MultiTransport ? transport.info() : [],
   };
+}
+
+function best() {
+  return (transport instanceof MultiTransport ? transport.best : app.lobby.via) as RungId | 'manual' | '';
 }
 
 function attach(m: Match) {
@@ -184,6 +191,7 @@ function attach(m: Match) {
     peerLeft: false,
     delay: m.status.delay,
     via: m.online ? app.lobby.via : '',
+    routes: [],
   };
   orig?.attachMatch(m);
 }

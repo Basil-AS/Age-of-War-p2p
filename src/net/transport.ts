@@ -7,6 +7,7 @@ export type Msg =
   | { k: 'turn'; n: number; cmds: Cmd[]; hn?: number; h?: number }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
+  | { k: 'rtt'; t: number; e?: 1 }
   | { k: 'rematch' }
   | { k: 'bye' };
 
@@ -20,7 +21,7 @@ export interface Transport {
   /** true once the remote peer is connected */
   connected: boolean;
   /** how this channel reaches the peer (shown in the UI) */
-  kind?: 'webrtc' | 'direct' | 'relay' | 'local';
+  kind?: 'webrtc' | 'direct' | 'relay' | 'local' | 'multi';
   close(): void;
 }
 

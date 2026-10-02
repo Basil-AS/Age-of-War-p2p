@@ -1,0 +1,10 @@
+import { chromium } from '@playwright/test';
+const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+const errs=[]; p.on('pageerror',e=>errs.push(String(e))); p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+await p.goto('http://localhost:4180/');
+await p.waitForFunction(()=>window.__aow?.app.phase==='title'||document.body.innerText.includes('rror'),null,{timeout:90000}).catch(e=>errs.push('timeout'));
+await p.waitForTimeout(1500);
+await p.screenshot({path:'/tmp/shots/prod-title.png'});
+console.log(await p.evaluate(()=>JSON.stringify({phase:window.__aow?.app.phase,err:window.__aow?.app.loadError})), errs);
+await b.close();

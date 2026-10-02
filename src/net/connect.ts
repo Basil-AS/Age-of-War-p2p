@@ -1,5 +1,6 @@
 import { createLocalTransport } from './local';
 import { createMqttPipe } from './mqttpipe';
+import { MultiTransport } from './multi';
 import { createNostrPipe } from './nostrpipe';
 import { createReliableTransport } from './reliable';
 import { guestHandshake, type Handshake, hostHandshake } from './session';
@@ -126,7 +127,7 @@ export const RUNGS: RungDef[] = [
 
 export interface Ladder {
   rungs: RungState[];
-  result: Promise<{ transport: Transport; rung: RungId; hs: Handshake }>;
+  result: Promise<{ transport: MultiTransport; rung: RungId; hs: Handshake }>;
   cancel(): void;
 }
 
@@ -162,6 +163,7 @@ export function connectLadder(
   const defs = enabledRungs(params);
   const rungs: RungState[] = defs.map((d) => ({ id: d.id, status: 'waiting' }));
   const live = new Map<RungId, Transport>();
+  const multi = new MultiTransport();
   const timers: ReturnType<typeof setTimeout>[] = [];
   let chosen: RungId | null = null;
   let handshaking: RungId | null = null;
@@ -176,59 +178,47 @@ export function connectLadder(
     }
   };
 
-  const teardownOthers = (keep: RungId) => {
-    for (const [id, t] of live) {
-      if (id === keep) continue;
-      try {
-        t.close();
-      } catch {
-        /* already closed */
-      }
-      set(id, 'closed');
-    }
-    for (const x of timers) clearTimeout(x);
-    timers.length = 0;
-  };
-
-  const result = new Promise<{ transport: Transport; rung: RungId; hs: Handshake }>((resolve, reject) => {
+  const result = new Promise<{ transport: MultiTransport; rung: RungId; hs: Handshake }>((resolve, reject) => {
     const finish = (id: RungId, transport: Transport, hs: Handshake) => {
       if (chosen && chosen !== id) return;
       chosen = id;
-      teardownOthers(id);
+      // every other route that is already up stays in the pool as a hot standby / upgrade candidate
+      for (const [rid, t] of live) {
+        if (rid !== id && t.connected) multi.add(rid, t);
+        if (rid !== id) set(rid, t.connected ? 'connected' : 'trying', 'standby');
+      }
+      multi.add(id, transport);
       set(id, 'connected');
-      resolve({ transport, rung: id, hs });
+      resolve({ transport: multi, rung: id, hs });
     };
 
     const start = async (d: RungDef) => {
-      if (cancelled || chosen) return;
+      if (cancelled) return;
       if (d.needsWebRtc && !hasRtc) return set(d.id, 'failed', 'WebRTC unavailable');
       set(d.id, 'trying');
       const slow = setTimeout(() => rungs.find((r) => r.id === d.id)?.status === 'trying' && set(d.id, 'slow'), 25000);
       timers.push(slow);
       try {
         const t = await d.make({ code, params });
-        if (cancelled || (chosen && chosen !== d.id)) {
+        if (cancelled) {
           t.close();
           return;
         }
         live.set(d.id, t);
         const onJoined = () => {
-          if (cancelled || (chosen && chosen !== d.id)) return;
+          if (cancelled) return;
+          if (chosen) {
+            // a later route came up after the match started: join the pool
+            if (chosen !== d.id) {
+              multi.add(d.id, t);
+              set(d.id, 'connected', 'standby');
+            }
+            return;
+          }
           if (role === 'host') {
             if (handshaking) return;
-            handshaking = d.id; // host decides: first rung with a live peer wins
-            // a server-relayed rung can beat WebRTC by milliseconds yet cost 100+ ms of ping every
-            // frame: give the direct routes a short head start (not on LAN, which is already best)
-            const wait = !d.needsWebRtc && d.id !== 'lan' && hasRtc && !params.has('net') ? 1500 : 0;
-            setTimeout(() => {
-              if (cancelled || (chosen && chosen !== d.id)) return;
-              const better = [...live].find(
-                ([id, lt]) => id !== d.id && lt.connected && defs.find((x) => x.id === id)?.needsWebRtc,
-              );
-              const use = better && wait ? better : ([d.id, t] as const);
-              handshaking = use[0];
-              void hostHandshake(use[1], name).then((hs) => finish(use[0], use[1], hs));
-            }, wait);
+            handshaking = d.id; // host decides: first rung with a live peer starts the game at once
+            void hostHandshake(t, name).then((hs) => finish(d.id, t, hs));
           } else {
             void guestHandshake(t, name).then((hs) => finish(d.id, t, hs));
           }
@@ -266,6 +256,7 @@ export function connectLadder(
         }
       }
       live.clear();
+      multi.close();
     },
   };
 }
