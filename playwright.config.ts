@@ -1,19 +1,21 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const cross = !!process.env.CROSS_BROWSER;
+const live = process.env.LIVE_URL; // post-deploy run against the real site: no local servers
 
 export default defineConfig({
   testDir: 'e2e',
   timeout: 90_000,
   workers: 1,
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: live ?? 'http://localhost:4173',
     viewport: { width: 1280, height: 720 },
   },
   projects: [
     {
       name: 'chromium',
-      testIgnore: /cross-browser/,
+      testIgnore: live ? undefined : /cross-browser/,
+      testMatch: live ? /live\.spec/ : undefined,
       use: {
         launchOptions: {
           executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -37,9 +39,11 @@ export default defineConfig({
         ]
       : []),
   ],
-  webServer: [
-    { command: 'npx vite --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: true },
-    { command: 'node e2e/tools/relay.mjs', port: 7777, reuseExistingServer: true },
-    { command: 'node server/relay.mjs', env: { PORT: '7779' }, port: 7779, reuseExistingServer: true },
-  ],
+  webServer: live
+    ? []
+    : [
+        { command: 'npx vite --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: true },
+        { command: 'node e2e/tools/relay.mjs', port: 7777, reuseExistingServer: true },
+        { command: 'node server/relay.mjs', env: { PORT: '7779' }, port: 7779, reuseExistingServer: true },
+      ],
 });

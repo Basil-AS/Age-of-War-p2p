@@ -13,6 +13,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -27,3 +29,23 @@ jobs:
         with: { path: dist }
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  verify:
+    # smoke-test the REAL deployed site from GitHub's network (chromium + firefox)
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox
+      - name: Live smoke (chromium)
+        env:
+          LIVE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: npx playwright test --project=chromium
+      - name: Live smoke (firefox)
+        env:
+          LIVE_URL: ${{ needs.deploy.outputs.page_url }}
+          CROSS_BROWSER: '1'
+        run: npx playwright test --project=firefox
