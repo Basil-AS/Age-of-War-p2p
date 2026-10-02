@@ -30,13 +30,25 @@ describe('rules', () => {
   });
   it('rejects units from the wrong age and unaffordable buys', () => {
     const s = new Sim(1);
-    s.step([{ t: 'buy', u: 3 }, { t: 'buy', u: 5 }], []);
+    s.step(
+      [
+        { t: 'buy', u: 3 },
+        { t: 'buy', u: 5 },
+      ],
+      [],
+    );
     expect(s.players[0].queue).toHaveLength(0);
     expect(s.players[0].gold).toBe(175);
   });
   it('cancel refunds', () => {
     const s = new Sim(1);
-    s.step([{ t: 'buy', u: 1 }, { t: 'cancel', i: 0 }], []);
+    s.step(
+      [
+        { t: 'buy', u: 1 },
+        { t: 'cancel', i: 0 },
+      ],
+      [],
+    );
     expect(s.players[0].gold).toBe(175);
   });
   it('front units fight and a kill pays gold + xp', () => {
@@ -61,7 +73,14 @@ describe('rules', () => {
   it('turrets: age-locked, slot-limited, sell refunds half', () => {
     const s = new Sim(1);
     s.players[0].gold = 2000;
-    s.step([{ t: 'turret', id: 0, slot: 0 }, { t: 'turret', id: 1, slot: 1 }, { t: 'turret', id: 3, slot: 0 }], []);
+    s.step(
+      [
+        { t: 'turret', id: 0, slot: 0 },
+        { t: 'turret', id: 1, slot: 1 },
+        { t: 'turret', id: 3, slot: 0 },
+      ],
+      [],
+    );
     expect(s.players[0].turrets).toEqual([0, null, null, null]);
     s.step([{ t: 'sell', slot: 0 }], []);
     expect(s.players[0].gold).toBe(2000 - 100 + 50);
@@ -94,7 +113,15 @@ describe('base assault', () => {
   it('an undefended base falls', () => {
     const s = new Sim(3);
     s.players[0].gold = 1e6;
-    s.step([{ t: 'buy', u: 2 }, { t: 'buy', u: 2 }, { t: 'buy', u: 2 }, { t: 'buy', u: 2 }], []);
+    s.step(
+      [
+        { t: 'buy', u: 2 },
+        { t: 'buy', u: 2 },
+        { t: 'buy', u: 2 },
+        { t: 'buy', u: 2 },
+      ],
+      [],
+    );
     for (let i = 0; i < 41 * 400 && s.winner === -1; i++) s.step();
     expect(s.winner).toBe(0);
   });
@@ -117,7 +144,9 @@ describe('base assault', () => {
 describe('AI skill levels', () => {
   it('insane beats easy more often than not', () => {
     let hardWins = 0;
-    for (let seed = 1; seed <= 6; seed++) if (playAi(seed, 'easy', 'insane', 900).players[0].baseHp < playAi(seed, 'easy', 'insane', 900).players[1].baseHp) hardWins++;
+    for (let seed = 1; seed <= 6; seed++)
+      if (playAi(seed, 'easy', 'insane', 900).players[0].baseHp < playAi(seed, 'easy', 'insane', 900).players[1].baseHp)
+        hardWins++;
     expect(hardWins).toBeGreaterThanOrEqual(4);
   });
 });

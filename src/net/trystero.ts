@@ -8,11 +8,17 @@ const APP_ID = 'age-of-war-p2p.basil-as.v1';
  * only to introduce the two browsers to each other — after that, game traffic is direct P2P.
  * Same room code + same relay on both sides = same match. No game server involved.
  */
-export async function createTrysteroTransport(code: string, relay: Relay = 'nostr', relayUrls?: string[]): Promise<Transport> {
+export async function createTrysteroTransport(
+  code: string,
+  relay: Relay = 'nostr',
+  relayUrls?: string[],
+): Promise<Transport> {
   const mod =
-    relay === 'torrent' ? await import('@trystero-p2p/torrent')
-    : relay === 'mqtt' ? await import('@trystero-p2p/mqtt')
-    : await import('@trystero-p2p/nostr');
+    relay === 'torrent'
+      ? await import('@trystero-p2p/torrent')
+      : relay === 'mqtt'
+        ? await import('@trystero-p2p/mqtt')
+        : await import('@trystero-p2p/nostr');
   const room = mod.joinRoom(
     {
       appId: APP_ID,

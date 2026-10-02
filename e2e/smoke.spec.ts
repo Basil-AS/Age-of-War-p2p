@@ -10,7 +10,11 @@ test('solo: menu → game → screenshots', async ({ page }) => {
   await page.getByText(/▶/).first().click();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: '/tmp/shots/game0.png' });
-  for (let i = 0; i < 6; i++) { await page.keyboard.press('1'); await page.keyboard.press('2'); await page.waitForTimeout(400); }
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press('1');
+    await page.keyboard.press('2');
+    await page.waitForTimeout(400);
+  }
   await page.waitForTimeout(25000);
   await page.screenshot({ path: '/tmp/shots/game1.png' });
   expect(errors).toEqual([]);

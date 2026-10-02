@@ -1,12 +1,16 @@
 import type { Msg, Transport } from './transport';
 
 /** In-memory pair of transports with configurable one-way latency/jitter (for tests). */
-export function createLoopbackPair(opts: { latencyMs?: number; jitterMs?: number; clock: { now(): number } }): [Transport & { pump(): void }, Transport & { pump(): void }] {
+export function createLoopbackPair(opts: {
+  latencyMs?: number;
+  jitterMs?: number;
+  clock: { now(): number };
+}): [Transport & { pump(): void }, Transport & { pump(): void }] {
   const { latencyMs = 0, jitterMs = 0, clock } = opts;
   type Pending = { at: number; m: Msg };
   const boxes: [Pending[], Pending[]] = [[], []];
   let seed = 12345;
-  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   const make = (me: 0 | 1): Transport & { pump(): void } => {
     let lastAt = 0;
     const t: Transport & { pump(): void } = {

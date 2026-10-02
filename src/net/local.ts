@@ -37,7 +37,11 @@ export function createLocalTransport(code: string): Transport {
       join(w.from);
     } else if (w.announce === 'here') join(w.from);
     else if (w.announce === 'leave') {
-      if (w.from === peer) { peer = null; t.connected = false; t.onLeave?.(); }
+      if (w.from === peer) {
+        peer = null;
+        t.connected = false;
+        t.onLeave?.();
+      }
     } else if (w.to === id && w.m && w.from === peer) t.onMessage?.(w.m);
   };
   ch.postMessage({ from: id, announce: 'join' } satisfies Wire);

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app, hostRoom, joinRoom, setDifficulty, setLang, setName, setRelay, setVol, startSolo, tr, trList } from '../lib/app.svelte';
+  import { app, hostRoom, joinRoom, setDifficulty, setLang, setMusicOn, setName, setRelay, setVol, startSolo, tr, trList } from '../lib/app.svelte';
   import type { Difficulty } from '../sim/types';
 
   let panel = $state<'main' | 'ai' | 'friend' | 'howto' | 'settings' | 'about'>('main');
@@ -62,6 +62,7 @@
           <div class="flex gap-2"><button class="btn {app.lang === 'ru' ? 'btn-primary' : ''}" onclick={() => setLang('ru')}>RU</button><button class="btn {app.lang === 'en' ? 'btn-primary' : ''}" onclick={() => setLang('en')}>EN</button></div></div>
         <label class="flex items-center justify-between gap-4"><span class="font-semibold">{tr('volume')}</span>
           <input type="range" min="0" max="1" step="0.05" class="flex-1 accent-amber-400" value={app.volume} oninput={(e) => setVol(Number(e.currentTarget.value))} /></label>
+        <label class="flex items-center justify-between"><span class="font-semibold">{tr('music')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.music} onchange={(e) => setMusicOn(e.currentTarget.checked)} /></label>
         <div><div class="font-semibold mb-1">{tr('relay')}</div>
           <div class="grid grid-cols-3 gap-2">{#each ['nostr', 'torrent', 'mqtt'] as r}<button class="btn text-sm {app.relay === r ? 'btn-primary' : ''}" onclick={() => setRelay(r as never)}>{r}</button>{/each}</div>
           <p class="text-xs text-slate-400 mt-1">{tr('relayHint')}</p></div>

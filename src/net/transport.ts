@@ -28,5 +28,9 @@ export function makeRoomCode(len = 5): string {
   return Array.from(b, (x) => ALPHABET[x % ALPHABET.length]).join('');
 }
 export function normalizeCode(s: string): string {
-  return s.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/O/g, '0').slice(0, 8);
+  return s
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .replace(/O/g, '0')
+    .slice(0, 8);
 }

@@ -8,7 +8,7 @@
     const t = top;
     const b = bottom;
     if (!t || !b) return;
-    const upd = () => setInsets(t.offsetHeight + 4, b.offsetHeight + 4);
+    const upd = () => setInsets(t.offsetHeight * 0.55, b.offsetHeight + 2);
     upd();
     const ro = new ResizeObserver(upd);
     ro.observe(t);
@@ -32,14 +32,15 @@
 </script>
 
 {#if h}
+  <div class="rotate-hint fixed inset-0 z-50 place-items-center bg-black/85 text-center p-8 text-xl font-bold">📱↻<br />{tr('rotate')}</div>
   <!-- top bar -->
-  <div bind:this={top} class="fixed top-0 inset-x-0 p-2 sm:p-3 flex items-start gap-2 sm:gap-3 pointer-events-none z-10">
-    <div class="glass rounded-2xl p-2 sm:p-3 pointer-events-auto flex flex-col gap-1.5 w-[min(46vw,360px)]">
+  <div bind:this={top} class="fixed top-0 inset-x-0 p-2 sm:p-3 short:p-1 flex items-start gap-2 sm:gap-3 pointer-events-none z-10">
+    <div class="glass rounded-2xl p-2 sm:p-3 short:p-1.5 short:gap-1 pointer-events-auto flex flex-col gap-1.5 w-[min(46vw,360px)]">
       <div class="flex items-center justify-between gap-2 text-sm sm:text-base">
         <span class="font-extrabold text-sky-300 truncate">{ageName(myAge)}</span>
         <span class="font-extrabold text-amber-300 tabular-nums" data-testid="gold">🪙 {fmt(h.gold)}</span>
       </div>
-      <div class="h-3 rounded-full bg-slate-900/80 overflow-hidden" title="HP"><div class="h-full bg-gradient-to-r from-sky-500 to-sky-300 transition-[width]" style="width:{hpPct(h.baseHp, h.baseMax)}%"></div></div>
+      <div class="h-3 short:h-2 rounded-full bg-slate-900/80 overflow-hidden" title="HP"><div class="h-full bg-gradient-to-r from-sky-500 to-sky-300 transition-[width]" style="width:{hpPct(h.baseHp, h.baseMax)}%"></div></div>
       <div class="flex items-center gap-2">
         <div class="relative flex-1 h-4 rounded-full bg-slate-900/80 overflow-hidden">
           <div class="h-full bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width]" style="width:{xpPct}%"></div>
@@ -56,12 +57,12 @@
       {#if app.net.stalled}<div class="glass rounded-full px-3 py-1 text-xs text-amber-300 animate-pulse">{tr('waitingOpp')}</div>{/if}
     </div>
 
-    <div class="glass rounded-2xl p-2 sm:p-3 pointer-events-auto flex flex-col gap-1.5 w-[min(36vw,260px)]">
+    <div class="glass rounded-2xl p-2 sm:p-3 short:p-1.5 short:gap-1 pointer-events-auto flex flex-col gap-1.5 w-[min(36vw,260px)]">
       <div class="flex items-center justify-between gap-2 text-sm">
         <span class="font-extrabold text-rose-300 truncate">{app.peerName || 'AI'}</span>
         <span class="text-xs text-slate-300 truncate">{ageName(h.eAge)}</span>
       </div>
-      <div class="h-3 rounded-full bg-slate-900/80 overflow-hidden"><div class="h-full bg-gradient-to-r from-rose-300 to-rose-500 transition-[width] ml-auto" style="width:{hpPct(h.eHp, h.eMax)}%"></div></div>
+      <div class="h-3 short:h-2 rounded-full bg-slate-900/80 overflow-hidden"><div class="h-full bg-gradient-to-r from-rose-300 to-rose-500 transition-[width] ml-auto" style="width:{hpPct(h.eHp, h.eMax)}%"></div></div>
     </div>
     <button class="glass pointer-events-auto rounded-xl size-10 shrink-0 grid place-items-center text-lg" onclick={toggleMenu} aria-label="menu">☰</button>
   </div>
@@ -76,15 +77,15 @@
   {/key}
 
   <!-- bottom panel -->
-  <div bind:this={bottom} class="fixed bottom-0 inset-x-0 p-2 sm:p-3 z-10">
-    <div class="glass rounded-2xl p-2 sm:p-3 flex flex-wrap items-stretch justify-center gap-2 sm:gap-4">
+  <div bind:this={bottom} class="fixed bottom-0 inset-x-0 p-2 sm:p-3 short:p-1 z-10">
+    <div class="glass rounded-2xl p-2 sm:p-3 short:p-1.5 flex flex-wrap items-stretch justify-center gap-2 sm:gap-4 short:gap-2">
       <div class="flex flex-col gap-1.5">
         <div class="flex gap-1.5 sm:gap-2">
           {#each h.units as u, i}
-            <button class="card {u.ok ? '' : 'off'} w-[72px] sm:w-24 p-1 flex flex-col items-center" onclick={() => buyUnit(u.def)} data-testid="unit-{i}">
+            <button class="card {u.ok ? '' : 'off'} w-[72px] sm:w-24 short:w-[60px] p-1 short:p-0.5 flex flex-col items-center" onclick={() => buyUnit(u.def)} data-testid="unit-{i}">
               <span class="kbd">{i + 1}</span>
-              <img src={app.icons[`u${u.def}`]} alt="" class="h-11 sm:h-14 object-contain" draggable="false" />
-              <span class="text-[10px] sm:text-xs font-bold leading-tight text-center truncate w-full">{unitName(u.def)}</span>
+              <img src={app.icons[`u${u.def}`]} alt="" class="h-11 sm:h-14 short:h-8 object-contain" draggable="false" />
+              <span class="text-[10px] sm:text-xs font-bold leading-tight text-center truncate w-full short:hidden">{unitName(u.def)}</span>
               <span class="text-[11px] sm:text-xs font-extrabold text-amber-300 tabular-nums">🪙 {fmt(u.cost)}</span>
             </button>
           {/each}
@@ -106,10 +107,10 @@
       <div class="flex flex-col gap-1.5">
         <div class="flex gap-1.5 sm:gap-2">
           {#each h.turretBuy as t, i}
-            <button class="card {t.ok ? '' : 'off'} w-[72px] sm:w-24 p-1 flex flex-col items-center" onclick={() => buyTurret(t.id)} data-testid="turret-{i}">
+            <button class="card {t.ok ? '' : 'off'} w-[72px] sm:w-24 short:w-[60px] p-1 short:p-0.5 flex flex-col items-center" onclick={() => buyTurret(t.id)} data-testid="turret-{i}">
               <span class="kbd">{'QWE'[i]}</span>
-              <img src={app.icons[`t${t.id}`]} alt="" class="h-9 sm:h-12 object-contain" draggable="false" />
-              <span class="text-[10px] sm:text-xs font-bold leading-tight text-center truncate w-full">{turretName(t.id)}</span>
+              <img src={app.icons[`t${t.id}`]} alt="" class="h-9 sm:h-12 short:h-7 object-contain" draggable="false" />
+              <span class="text-[10px] sm:text-xs font-bold leading-tight text-center truncate w-full short:hidden">{turretName(t.id)}</span>
               <span class="text-[11px] sm:text-xs font-extrabold text-amber-300 tabular-nums">🪙 {fmt(t.cost)}</span>
             </button>
           {/each}
@@ -132,10 +133,10 @@
         </div>
       </div>
 
-      <button class="relative rounded-2xl w-24 sm:w-28 border border-amber-400/60 bg-gradient-to-b from-orange-600/80 to-rose-700/80 overflow-hidden flex flex-col items-center justify-center p-1 {h.specialReady ? 'ready' : 'opacity-80'}" onclick={special} disabled={!h.specialReady} data-testid="special">
+      <button class="relative rounded-2xl w-24 sm:w-28 short:w-16 border border-amber-400/60 bg-gradient-to-b from-orange-600/80 to-rose-700/80 overflow-hidden flex flex-col items-center justify-center p-1 {h.specialReady ? 'ready' : 'opacity-80'}" onclick={special} disabled={!h.specialReady} data-testid="special">
         <span class="kbd">␣</span>
-        <span class="text-2xl sm:text-3xl">{['☄️', '🏹', '💚', '💣', '🛰️'][myAge]}</span>
-        <span class="text-[10px] sm:text-xs font-extrabold leading-tight text-center">{specialName(myAge)}</span>
+        <span class="text-2xl sm:text-3xl short:text-xl">{['☄️', '🏹', '💚', '💣', '🛰️'][myAge]}</span>
+        <span class="text-[10px] sm:text-xs font-extrabold leading-tight text-center short:hidden">{specialName(myAge)}</span>
         {#if !h.specialReady}<div class="absolute bottom-0 inset-x-0 bg-black/60" style="height:{h.specialCd * 100}%"></div>
           <span class="absolute inset-0 grid place-items-center text-xl font-black tabular-nums">{Math.ceil(h.specialCd * 60)}</span>{/if}
       </button>

@@ -15,9 +15,22 @@ test('webrtc: two browsers connect over a real RTCDataChannel and play in sync',
   await b.goto(`/${relayQuery}#join=${code}&relay=nostr`);
   await expect(a.getByTestId('gold')).toBeVisible({ timeout: 90_000 });
   await expect(b.getByTestId('gold')).toBeVisible({ timeout: 30_000 });
-  for (let i = 0; i < 3; i++) { await a.keyboard.press('1'); await b.keyboard.press('1'); await a.waitForTimeout(500); }
+  for (let i = 0; i < 3; i++) {
+    await a.keyboard.press('1');
+    await b.keyboard.press('1');
+    await a.waitForTimeout(500);
+  }
   await a.waitForTimeout(8000);
-  const st = (p: typeof a) => p.evaluate(() => { const m = (window as any).__aow.match; return { desync: m.status.desync, tick: m.sim.tick, rtt: m.status.rtt, gold: m.sim.players.map((q: any) => q.gold) }; });
+  const st = (p: typeof a) =>
+    p.evaluate(() => {
+      const m = (window as any).__aow.match;
+      return {
+        desync: m.status.desync,
+        tick: m.sim.tick,
+        rtt: m.status.rtt,
+        gold: m.sim.players.map((q: any) => q.gold),
+      };
+    });
   const [sa, sb] = [await st(a), await st(b)];
   console.log('A', JSON.stringify(sa), 'B', JSON.stringify(sb));
   expect(sa.desync || sb.desync).toBe(false);
@@ -25,4 +38,3 @@ test('webrtc: two browsers connect over a real RTCDataChannel and play in sync',
   expect(sa.gold[1]).toBeLessThan(175);
   expect(sb.gold[0]).toBeLessThan(175);
 });
-

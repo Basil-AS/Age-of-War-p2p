@@ -55,7 +55,24 @@ const s2t = (sec: number) => Math.max(1, Math.round(sec * SIM_HZ));
 
 // [name, cost, trainFrames, hp, melee, ranged, meleeRange, rangedRange, length, pauseFrames,
 //  meleeFirstSec, meleeSpeedSec, rangedStandSec, rangedWalkSec, mount, look]
-type Row = [string, number, number, number, number, number, number, number, number, number, number, number, number, number, Mount, Look];
+type Row = [
+  string,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  Mount,
+  Look,
+];
 const ROWS: Row[] = [
   ['Clubman', 15, 40, 55, 16, 0, 20, 0, 20, 20, 0.43, 1, 0, 0, 'none', 'club'],
   ['Slingshot', 25, 40, 42, 10, 8, 20, 100, 20, 20, 0.43, 1, 0.8, 1.07, 'none', 'sling'],
@@ -116,7 +133,23 @@ export interface TurretDef {
   proj: 'rock' | 'egg' | 'catapult' | 'fire' | 'oil' | 'ball' | 'bullet' | 'rocket' | 'laser' | 'plasma';
 }
 
-const T_NAMES = ['Rock Slingshot', 'Egg Automatic', 'Primitive Catapult', 'Catapult', 'Fire Catapult', 'Oil Thrower', 'Small Cannon', 'Medium Cannon', 'Big Cannon', 'Gun', 'Rocket Launcher', 'Double Gun', 'Laser', 'Red Blaster', 'Blue Blaster'];
+const T_NAMES = [
+  'Rock Slingshot',
+  'Egg Automatic',
+  'Primitive Catapult',
+  'Catapult',
+  'Fire Catapult',
+  'Oil Thrower',
+  'Small Cannon',
+  'Medium Cannon',
+  'Big Cannon',
+  'Gun',
+  'Rocket Launcher',
+  'Double Gun',
+  'Laser',
+  'Red Blaster',
+  'Blue Blaster',
+];
 const T_COST = [100, 200, 500, 500, 750, 1000, 1500, 3000, 6000, 7000, 9000, 14000, 24000, 40000, 100000];
 const T_SPEED = [0.8, 0.25, 1.37, 2.47, 2.47, 1.92, 1.12, 2, 2, 1.12, 1, 0.5, 1, 0.25, 0.25];
 const T_ADD = [30, 11, 20, 70, 70, 50, 50, 70, 70, 70, 80, 0, 40, 11, 11];
@@ -124,7 +157,23 @@ const T_DMG = [12, 5, 25, 40, 50, 125, 30, 70, 100, 70, 100, 60, 100, 40, 60];
 const T_RANGE = [350, 300, 380, 400, 300, 50, 500, 500, 500, 500, 500, 500, 400, 500, 550];
 const T_FRAG = [0, 0, 0, 0, 10, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0];
 const T_FIRST = [0.1, 0, 0.17, 0.35, 0.35, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-const T_PROJ: TurretDef['proj'][] = ['rock', 'egg', 'catapult', 'catapult', 'fire', 'oil', 'ball', 'ball', 'ball', 'bullet', 'rocket', 'bullet', 'laser', 'laser', 'plasma'];
+const T_PROJ: TurretDef['proj'][] = [
+  'rock',
+  'egg',
+  'catapult',
+  'catapult',
+  'fire',
+  'oil',
+  'ball',
+  'ball',
+  'ball',
+  'bullet',
+  'rocket',
+  'bullet',
+  'laser',
+  'laser',
+  'plasma',
+];
 
 export const TURRETS: TurretDef[] = T_NAMES.map((name, id) => ({
   id,
@@ -158,6 +207,5 @@ export const SPECIALS: SpecialDef[] = [
   { kind: 'lasers', count: 18, interval: f2t(5), damage: 1000, spacing: 50 },
 ];
 
-export const unitsOfAge = (age: number): UnitDef[] =>
-  UNITS.filter((u) => u.age === age && (u.tier < 3 || age === 4));
+export const unitsOfAge = (age: number): UnitDef[] => UNITS.filter((u) => u.age === age && (u.tier < 3 || age === 4));
 export const turretsOfAge = (age: number): TurretDef[] => TURRETS.filter((t) => t.age === age);

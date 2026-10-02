@@ -3,12 +3,23 @@ import { sfx } from '../audio';
 import type { Match } from '../net/match';
 import { BASE_EDGE, MAP_LEN, SIM_HZ, TURRET_SLOT_Y, TURRETS, UNITS, WALK_SPEED } from '../sim/data';
 import type { Ev, Side, Troop } from '../sim/types';
-import { animateRig, buildBase, buildRig, buildTurret, drawSlotLedge, skyGradient, TEAM, THEMES, type Rig } from './art';
+import {
+  animateRig,
+  buildBase,
+  buildRig,
+  buildTurret,
+  drawSlotLedge,
+  type Rig,
+  skyGradient,
+  TEAM,
+  THEMES,
+} from './art';
 
-const PAD = 50;
+const PAD = 80;
 export const WORLD_W = MAP_LEN + PAD * 2; // 1080
-export const WORLD_H = 400;
 const GROUND = 340; // y of the walking line inside the world
+const BELOW_GROUND = 34;
+const VISIBLE_H = 232 + BELOW_GROUND; // base tops (~215 above ground) … just below the ground line
 const STEP = WALK_SPEED / SIM_HZ;
 const UNIT_SCALE = 1.2;
 
@@ -25,11 +36,48 @@ interface UnitView {
   lastHp: number;
   yOff: number;
 }
-interface TurretView { id: number; c: Container; barrel: Container; recoil: number }
-interface Particle { s: Sprite; vx: number; vy: number; g: number; life: number; max: number; grow: number }
-interface Proj { g: Graphics; x0: number; y0: number; x1: number; y1: number; t: number; dur: number; arc: number; kind: string; spin: number; trail: boolean }
-interface Float { t: Text; life: number; vy: number }
-interface Fall { g: Graphics; x: number; y: number; vx: number; vy: number; kind: string; ground: number }
+interface TurretView {
+  id: number;
+  c: Container;
+  barrel: Container;
+  recoil: number;
+}
+interface Particle {
+  s: Sprite;
+  vx: number;
+  vy: number;
+  g: number;
+  life: number;
+  max: number;
+  grow: number;
+}
+interface Proj {
+  g: Graphics;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  t: number;
+  dur: number;
+  arc: number;
+  kind: string;
+  spin: number;
+  trail: boolean;
+}
+interface Float {
+  t: Text;
+  life: number;
+  vy: number;
+}
+interface Fall {
+  g: Graphics;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  kind: string;
+  ground: number;
+}
 
 export class GameRenderer {
   app = new Application();
@@ -44,7 +92,10 @@ export class GameRenderer {
   private baseBars = [new Graphics(), new Graphics()];
   private scaffolds = [new Container(), new Container()];
   private ledges: Graphics[][] = [[], []];
-  private turretViews: (TurretView | null)[][] = [[null, null, null, null], [null, null, null, null]];
+  private turretViews: (TurretView | null)[][] = [
+    [null, null, null, null],
+    [null, null, null, null],
+  ];
   private units = new Map<number, UnitView>();
   private unitLayer = new Container();
   private fxLayer = new Container();
@@ -81,7 +132,15 @@ export class GameRenderer {
     const dot = new Graphics().circle(0, 0, 8).fill(0xffffff);
     this.dotTex = this.app.renderer.generateTexture(dot);
     this.app.stage.addChild(this.bgG, this.stars, this.cloudG, this.world, this.flashRect);
-    this.world.addChild(this.bases[0] = new Container(), this.bases[1] = new Container(), ...this.scaffolds, this.unitLayer, this.fxLayer, this.textLayer, ...this.baseBars);
+    this.world.addChild(
+      (this.bases[0] = new Container()),
+      (this.bases[1] = new Container()),
+      ...this.scaffolds,
+      this.unitLayer,
+      this.fxLayer,
+      this.textLayer,
+      ...this.baseBars,
+    );
     this.unitLayer.sortableChildren = true;
     this.ready = true;
     window.addEventListener('resize', () => this.layout());
@@ -120,12 +179,22 @@ export class GameRenderer {
     this.units.clear();
     for (const f of this.floats) f.t.destroy();
     this.floats = [];
-    this.fxLayer.removeChildren().forEach((c) => c.destroy());
-    this.projs = []; this.particles = []; this.falls = [];
+    this.fxLayer.removeChildren().forEach((c) => {
+      c.destroy();
+    });
+    this.projs = [];
+    this.particles = [];
+    this.falls = [];
     this.baseAge = [-1, -1];
     this.themeAge = -1;
-    this.turretViews = [[null, null, null, null], [null, null, null, null]];
-    for (const s of this.scaffolds) s.removeChildren().forEach((c) => c.destroy({ children: true }));
+    this.turretViews = [
+      [null, null, null, null],
+      [null, null, null, null],
+    ];
+    for (const s of this.scaffolds)
+      s.removeChildren().forEach((c) => {
+        c.destroy({ children: true });
+      });
     this.ledges = [[], []];
     this.shake = 0;
   }
@@ -135,18 +204,17 @@ export class GameRenderer {
     const w = this.app.screen.width;
     const h = this.app.screen.height;
     const availH = Math.max(120, h - this.insetTop - this.insetBottom);
-    this.scale = Math.min(w / WORLD_W, availH / WORLD_H);
+    this.scale = Math.min(w / WORLD_W, availH / VISIBLE_H);
     this.ox = (w - WORLD_W * this.scale) / 2;
-    this.oy = this.insetTop + (availH - WORLD_H * this.scale) * 0.55;
+    // centre the visible band (base tops → just below the ground) in the free area
+    const groundY = this.insetTop + (availH - VISIBLE_H * this.scale) / 2 + (VISIBLE_H - BELOW_GROUND) * this.scale;
+    this.oy = groundY - GROUND * this.scale;
     this.world.scale.set(this.scale);
     this.themeAge = -1; // force bg redraw
   }
 
   private vx(x: number, side = this.match.side): number {
     return PAD + (side === 0 ? x : MAP_LEN - x);
-  }
-  private toWorldX(x: number) {
-    return this.vx(x);
   }
 
   private drawBackground(age: number) {
@@ -169,9 +237,9 @@ export class GameRenderer {
       let sd = 17;
       for (let i = 0; i < 90; i++) {
         sd = (sd * 1103515245 + 12345) & 0x7fffffff;
-        const x = (sd % 1000) / 1000 * w;
+        const x = ((sd % 1000) / 1000) * w;
         sd = (sd * 1103515245 + 12345) & 0x7fffffff;
-        const y = (sd % 1000) / 1000 * gy * 0.8;
+        const y = ((sd % 1000) / 1000) * gy * 0.8;
         this.stars.circle(x, y, 0.6 + (sd % 3) * 0.4).fill({ color: 0xffffff, alpha: 0.35 + (sd % 5) * 0.12 });
       }
     }
@@ -206,7 +274,10 @@ export class GameRenderer {
     this.stepFloats(dt);
     this.flashA = Math.max(0, this.flashA - dt * 2.2);
     this.flashRect.clear();
-    if (this.flashA > 0) this.flashRect.rect(0, 0, this.app.screen.width, this.app.screen.height).fill({ color: 0xffffff, alpha: this.flashA * 0.5 });
+    if (this.flashA > 0)
+      this.flashRect
+        .rect(0, 0, this.app.screen.width, this.app.screen.height)
+        .fill({ color: 0xffffff, alpha: this.flashA * 0.5 });
   }
 
   private drawClouds(age: number) {
@@ -216,7 +287,7 @@ export class GameRenderer {
     const w = this.app.screen.width;
     for (let i = 0; i < 6; i++) {
       const x = ((i * 237 + this.cloudT * (0.6 + (i % 3) * 0.3)) % (w + 240)) - 120;
-      const y = this.oy + (30 + (i * 53) % 110) * this.scale;
+      const y = this.oy + (30 + ((i * 53) % 110)) * this.scale;
       const r = (22 + (i % 3) * 8) * this.scale;
       g.ellipse(x, y, r * 2.2, r * 0.7).fill({ color: th.cloud, alpha: age === 4 ? 0.12 : 0.55 });
       g.ellipse(x - r, y + r * 0.1, r * 1.2, r * 0.55).fill({ color: th.cloud, alpha: age === 4 ? 0.1 : 0.45 });
@@ -232,7 +303,9 @@ export class GameRenderer {
       const slot = side === me ? 0 : 1; // my base is always drawn on the left
       if (this.baseAge[slot] !== p.age) {
         const c = this.bases[slot] as Container;
-        c.removeChildren().forEach((x) => x.destroy({ children: true }));
+        c.removeChildren().forEach((x) => {
+          x.destroy({ children: true });
+        });
         c.addChild(buildBase(p.age, side === me));
         c.scale.x = slot === 0 ? 1 : -1;
         c.position.set(slot === 0 ? PAD + BASE_EDGE : PAD + MAP_LEN - BASE_EDGE, GROUND);
@@ -245,7 +318,9 @@ export class GameRenderer {
       const frac = Math.max(0, p.baseHp / p.baseMax);
       bar.clear();
       bar.roundRect(bx, GROUND - 205, 100, 9, 4).fill({ color: 0x000000, alpha: 0.5 });
-      bar.roundRect(bx + 1, GROUND - 204, 98 * frac, 7, 3).fill(frac > 0.5 ? 0x4ade80 : frac > 0.25 ? 0xfacc15 : 0xf87171);
+      bar
+        .roundRect(bx + 1, GROUND - 204, 98 * frac, 7, 3)
+        .fill(frac > 0.5 ? 0x4ade80 : frac > 0.25 ? 0xfacc15 : 0xf87171);
     }
   }
 
@@ -274,8 +349,11 @@ export class GameRenderer {
         drawSlotLedgeCached((this.ledges[slotSide] as Graphics[])[s] as Graphics, s < p.slots);
         const id = p.turrets[s] ?? null;
         const cur = (this.turretViews[slotSide] as (TurretView | null)[])[s] ?? null;
-        if (cur && cur.id !== id) { cur.c.destroy({ children: true }); (this.turretViews[slotSide] as (TurretView | null)[])[s] = null; }
-        if (id !== null && !((this.turretViews[slotSide] as (TurretView | null)[])[s])) {
+        if (cur && cur.id !== id) {
+          cur.c.destroy({ children: true });
+          (this.turretViews[slotSide] as (TurretView | null)[])[s] = null;
+        }
+        if (id !== null && !(this.turretViews[slotSide] as (TurretView | null)[])[s]) {
           const t = buildTurret(id, side === me);
           t.root.position.set(0, -(TURRET_SLOT_Y[s] as number));
           if (slotSide === 1) t.root.scale.x = -1;
@@ -317,8 +395,12 @@ export class GameRenderer {
         const tint = v.flash > 0 ? 0xffffff : 0xffffff;
         void tint;
         root.alpha = 1;
-        if (v.lastHp !== t.hp) { this.drawHp(v, t.hp / t.maxHp); v.lastHp = t.hp; }
-        if (t.regenUntil > sim.tick && Math.random() < 0.08) this.spark(root.x + (Math.random() - 0.5) * 14, root.y - 14 - Math.random() * 18, 0x4ade80, 1);
+        if (v.lastHp !== t.hp) {
+          this.drawHp(v, t.hp / t.maxHp);
+          v.lastHp = t.hp;
+        }
+        if (t.regenUntil > sim.tick && Math.random() < 0.08)
+          this.spark(root.x + (Math.random() - 0.5) * 14, root.y - 14 - Math.random() * 18, 0x4ade80, 1);
       }
     }
     for (const [uid, v] of this.units) {
@@ -335,7 +417,19 @@ export class GameRenderer {
     const hpBar = new Graphics();
     hpBar.position.set(0, -rig.height - 8);
     rig.root.addChild(hpBar);
-    const v: UnitView = { uid: t.uid, rig, def: t.def, side: t.side, t: Math.random() * 6, atk: 99, mode: 0, flash: 0, hpBar, lastHp: -1, yOff: ((t.uid * 7) % 5 - 2) * 2.2 };
+    const v: UnitView = {
+      uid: t.uid,
+      rig,
+      def: t.def,
+      side: t.side,
+      t: Math.random() * 6,
+      atk: 99,
+      mode: 0,
+      flash: 0,
+      hpBar,
+      lastHp: -1,
+      yOff: (((t.uid * 7) % 5) - 2) * 2.2,
+    };
     this.unitLayer.addChild(rig.root);
     this.units.set(t.uid, v);
     return v;
@@ -360,7 +454,10 @@ export class GameRenderer {
       c.y += 0.2;
       c.alpha = Math.max(0, 1 - life * 1.8);
       c.x -= dir * 0.4;
-      if (life > 0.6) { this.app.ticker.remove(tick); c.destroy({ children: true }); }
+      if (life > 0.6) {
+        this.app.ticker.remove(tick);
+        c.destroy({ children: true });
+      }
     };
     this.app.ticker.add(tick);
   }
@@ -383,23 +480,33 @@ export class GameRenderer {
         sfx('swing');
         break;
       }
-      case 'shot': this.onShot(e); break;
+      case 'shot':
+        this.onShot(e);
+        break;
       case 'hit': {
         const x = this.vx(e.x);
         const y = e.base ? GROUND - 60 : GROUND - 22;
         this.burst(x, y, e.side === me ? 0xfb7185 : 0xfde68a, e.big ? 12 : 4, e.big ? 160 : 90);
-        if (e.big) { this.shake = Math.min(10, this.shake + 3); }
-        if (e.base || e.dmg >= 20) this.floatText(`${Math.round(e.dmg)}`, x, y - 18, e.side === me ? '#fecaca' : '#fef9c3', e.big ? 17 : 13);
+        if (e.big) {
+          this.shake = Math.min(10, this.shake + 3);
+        }
+        if (e.base || e.dmg >= 20)
+          this.floatText(`${Math.round(e.dmg)}`, x, y - 18, e.side === me ? '#fecaca' : '#fef9c3', e.big ? 17 : 13);
         sfx(e.big ? 'boom' : 'hit');
         break;
       }
       case 'die': {
         const x = this.vx(e.x);
         this.burst(x, GROUND - 18, 0xfca5a5, 10, 120);
-        if (e.side !== me) { this.floatText(`+${e.gold}`, x, GROUND - 56, '#fde047', 15); sfx('coin'); }
+        if (e.side !== me) {
+          this.floatText(`+${e.gold}`, x, GROUND - 56, '#fde047', 15);
+          sfx('coin');
+        }
         break;
       }
-      case 'turret': sfx('buy'); break;
+      case 'turret':
+        sfx('buy');
+        break;
       case 'evolve': {
         sfx('evolve');
         this.flashA = 0.9;
@@ -407,8 +514,13 @@ export class GameRenderer {
         this.banner?.(String(e.age), e.side === me ? 'evolve-me' : 'evolve-them');
         break;
       }
-      case 'special': this.onSpecial(e); break;
-      case 'end': sfx(e.winner === me ? 'win' : 'lose'); this.shake = 14; break;
+      case 'special':
+        this.onSpecial(e);
+        break;
+      case 'end':
+        sfx(e.winner === me ? 'win' : 'lose');
+        this.shake = 14;
+        break;
     }
   }
 
@@ -428,19 +540,55 @@ export class GameRenderer {
       if (tv) tv.recoil = 1;
     } else {
       const u = UNITS[e.def] as (typeof UNITS)[number];
-      kind = u.mount === 'cannon' ? 'ball' : u.mount === 'tank' ? 'shell' : u.mount === 'mech' ? 'plasma'
-        : u.look === 'sling' ? 'rock' : u.look === 'bow' ? 'arrow' : u.look === 'blaster' || u.look === 'super' ? 'laser' : 'bullet';
+      kind =
+        u.mount === 'cannon'
+          ? 'ball'
+          : u.mount === 'tank'
+            ? 'shell'
+            : u.mount === 'mech'
+              ? 'plasma'
+              : u.look === 'sling'
+                ? 'rock'
+                : u.look === 'bow'
+                  ? 'arrow'
+                  : u.look === 'blaster' || u.look === 'super'
+                    ? 'laser'
+                    : 'bullet';
       y0 = GROUND - (u.mount === 'none' ? 26 : u.mount === 'tank' ? 40 : u.mount === 'mech' ? 70 : 38);
     }
     switch (kind) {
-      case 'rock': case 'egg': speed = 380; arc = 22; break;
-      case 'arrow': speed = 520; arc = 12; break;
-      case 'catapult': case 'ball': case 'fire': case 'shell': speed = 420; arc = 55; break;
-      case 'oil': speed = 300; arc = 6; break;
-      case 'rocket': speed = 650; arc = 4; break;
-      case 'laser': speed = 2400; break;
-      case 'plasma': speed = 700; break;
-      default: speed = 1500;
+      case 'rock':
+      case 'egg':
+        speed = 380;
+        arc = 22;
+        break;
+      case 'arrow':
+        speed = 520;
+        arc = 12;
+        break;
+      case 'catapult':
+      case 'ball':
+      case 'fire':
+      case 'shell':
+        speed = 420;
+        arc = 55;
+        break;
+      case 'oil':
+        speed = 300;
+        arc = 6;
+        break;
+      case 'rocket':
+        speed = 650;
+        arc = 4;
+        break;
+      case 'laser':
+        speed = 2400;
+        break;
+      case 'plasma':
+        speed = 700;
+        break;
+      default:
+        speed = 1500;
     }
     const x0 = this.vx(e.from);
     const x1 = this.vx(e.to);
@@ -449,8 +597,30 @@ export class GameRenderer {
     const g = new Graphics();
     drawProjectile(g, kind);
     this.fxLayer.addChild(g);
-    this.projs.push({ g, x0, y0, x1, y1: GROUND - 22, t: 0, dur, arc, kind, spin: kind === 'rock' || kind === 'egg' ? 14 : 0, trail: kind === 'rocket' || kind === 'plasma' || kind === 'fire' });
-    sfx(kind === 'arrow' ? 'arrow' : kind === 'laser' || kind === 'plasma' ? 'laser' : kind === 'ball' || kind === 'shell' || kind === 'catapult' ? 'boom' : kind === 'rock' || kind === 'egg' ? 'swing' : 'gun');
+    this.projs.push({
+      g,
+      x0,
+      y0,
+      x1,
+      y1: GROUND - 22,
+      t: 0,
+      dur,
+      arc,
+      kind,
+      spin: kind === 'rock' || kind === 'egg' ? 14 : 0,
+      trail: kind === 'rocket' || kind === 'plasma' || kind === 'fire',
+    });
+    sfx(
+      kind === 'arrow'
+        ? 'arrow'
+        : kind === 'laser' || kind === 'plasma'
+          ? 'laser'
+          : kind === 'ball' || kind === 'shell' || kind === 'catapult'
+            ? 'boom'
+            : kind === 'rock' || kind === 'egg'
+              ? 'swing'
+              : 'gun',
+    );
     if (e.turret < 0 || kind === 'laser' || kind === 'bullet') this.spark(x0 + (x1 > x0 ? 14 : -14), y0, 0xfde047, 1);
   }
 
@@ -459,16 +629,35 @@ export class GameRenderer {
     if (e.idx < 0) {
       this.banner?.(e.kind, e.side === me ? 'special-me' : 'special-them');
       sfx('special');
-      if (e.kind === 'heal') for (let i = 0; i < 30; i++) this.spark(this.vx(e.side === 0 ? 40 : 860) + (Math.random() - 0.5) * 400, GROUND - Math.random() * 60, 0x4ade80, 2);
+      if (e.kind === 'heal')
+        for (let i = 0; i < 30; i++)
+          this.spark(
+            this.vx(e.side === 0 ? 40 : 860) + (Math.random() - 0.5) * 400,
+            GROUND - Math.random() * 60,
+            0x4ade80,
+            2,
+          );
       return;
     }
     const x = this.vx(e.x);
     const g = new Graphics();
-    let vx = 0, vy = 900, y = -40;
-    if (e.kind === 'meteors') { drawProjectile(g, 'meteor'); vx = 260; vy = 800; y = -60; }
-    else if (e.kind === 'arrows') { drawProjectile(g, 'arrow'); g.rotation = Math.PI / 2; vy = 1000; }
-    else if (e.kind === 'bombs') { drawProjectile(g, 'bomb'); vy = 700; }
-    else { // lasers: vertical beam
+    let vx = 0,
+      vy = 900,
+      y = -40;
+    if (e.kind === 'meteors') {
+      drawProjectile(g, 'meteor');
+      vx = 260;
+      vy = 800;
+      y = -60;
+    } else if (e.kind === 'arrows') {
+      drawProjectile(g, 'arrow');
+      g.rotation = Math.PI / 2;
+      vy = 1000;
+    } else if (e.kind === 'bombs') {
+      drawProjectile(g, 'bomb');
+      vy = 700;
+    } else {
+      // lasers: vertical beam
       g.rect(-3, 0, 6, GROUND).fill({ color: 0x22d3ee, alpha: 0.9 });
       g.rect(-9, 0, 18, GROUND).fill({ color: 0x22d3ee, alpha: 0.25 });
       g.position.set(x, 0);
@@ -492,15 +681,27 @@ export class GameRenderer {
       if (f.kind === 'beam') {
         f.ground -= dt;
         f.g.alpha = Math.max(0, f.ground / 0.18);
-        if (f.ground <= 0) { f.g.destroy(); this.falls.splice(i, 1); }
+        if (f.ground <= 0) {
+          f.g.destroy();
+          this.falls.splice(i, 1);
+        }
         continue;
       }
       f.g.x += f.vx * dt;
       f.g.y += f.vy * dt;
       if (f.kind === 'meteors' && Math.random() < 0.6) this.spark(f.g.x, f.g.y, 0xfb923c, 1);
       if (f.g.y >= f.ground) {
-        this.burst(f.g.x, GROUND - 10, f.kind === 'arrows' ? 0xe5e7eb : 0xfb923c, f.kind === 'arrows' ? 4 : 18, f.kind === 'arrows' ? 60 : 220);
-        if (f.kind !== 'arrows') { this.shake = Math.min(12, this.shake + 3); sfx('boom'); }
+        this.burst(
+          f.g.x,
+          GROUND - 10,
+          f.kind === 'arrows' ? 0xe5e7eb : 0xfb923c,
+          f.kind === 'arrows' ? 4 : 18,
+          f.kind === 'arrows' ? 60 : 220,
+        );
+        if (f.kind !== 'arrows') {
+          this.shake = Math.min(12, this.shake + 3);
+          sfx('boom');
+        }
         f.g.destroy();
         this.falls.splice(i, 1);
       }
@@ -514,13 +715,21 @@ export class GameRenderer {
       const k = Math.min(1, p.t / p.dur);
       const x = p.x0 + (p.x1 - p.x0) * k;
       const y = p.y0 + (p.y1 - p.y0) * k - Math.sin(k * Math.PI) * p.arc;
-      const dx = x - p.g.x, dy = y - p.g.y;
+      const dx = x - p.g.x,
+        dy = y - p.g.y;
       p.g.position.set(x, y);
       if (p.spin) p.g.rotation += p.spin * dt;
       else if (dx !== 0 || dy !== 0) p.g.rotation = Math.atan2(dy, dx || 0.0001);
       if (p.trail && Math.random() < 0.7) this.spark(x, y, p.kind === 'plasma' ? 0xa78bfa : 0xfdba74, 1);
       if (k >= 1) {
-        if (p.kind === 'ball' || p.kind === 'shell' || p.kind === 'catapult' || p.kind === 'rocket' || p.kind === 'fire') this.burst(x, y, 0xfdba74, 8, 140);
+        if (
+          p.kind === 'ball' ||
+          p.kind === 'shell' ||
+          p.kind === 'catapult' ||
+          p.kind === 'rocket' ||
+          p.kind === 'fire'
+        )
+          this.burst(x, y, 0xfdba74, 8, 140);
         p.g.destroy();
         this.projs.splice(i, 1);
       }
@@ -536,10 +745,28 @@ export class GameRenderer {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = Math.random() * speed;
-      this.addParticle(x, y, Math.cos(a) * s, Math.sin(a) * s - speed * 0.3, color, 0.25 + Math.random() * 0.45, 0.35 + Math.random() * 0.35, 380);
+      this.addParticle(
+        x,
+        y,
+        Math.cos(a) * s,
+        Math.sin(a) * s - speed * 0.3,
+        color,
+        0.25 + Math.random() * 0.45,
+        0.35 + Math.random() * 0.35,
+        380,
+      );
     }
   }
-  private addParticle(x: number, y: number, vx: number, vy: number, color: number, size: number, life: number, g: number) {
+  private addParticle(
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    color: number,
+    size: number,
+    life: number,
+    g: number,
+  ) {
     const s = new Sprite(this.dotTex);
     s.anchor.set(0.5);
     s.tint = color;
@@ -552,7 +779,11 @@ export class GameRenderer {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i] as Particle;
       p.life -= dt;
-      if (p.life <= 0) { p.s.destroy(); this.particles.splice(i, 1); continue; }
+      if (p.life <= 0) {
+        p.s.destroy();
+        this.particles.splice(i, 1);
+        continue;
+      }
       p.vy += p.g * dt;
       p.s.x += p.vx * dt;
       p.s.y += p.vy * dt;
@@ -561,7 +792,16 @@ export class GameRenderer {
   }
   private floatText(text: string, x: number, y: number, color: string, size: number) {
     if (this.floats.length > 24) return;
-    const t = new Text({ text, style: { fontFamily: 'system-ui, sans-serif', fontWeight: '800', fontSize: size, fill: color, stroke: { color: '#000000', width: 3 } } });
+    const t = new Text({
+      text,
+      style: {
+        fontFamily: 'system-ui, sans-serif',
+        fontWeight: '800',
+        fontSize: size,
+        fill: color,
+        stroke: { color: '#000000', width: 3 },
+      },
+    });
     t.anchor.set(0.5);
     t.position.set(x, y);
     this.textLayer.addChild(t);
@@ -573,7 +813,10 @@ export class GameRenderer {
       f.life -= dt;
       f.t.y += f.vy * dt;
       f.t.alpha = Math.min(1, f.life * 2);
-      if (f.life <= 0) { f.t.destroy(); this.floats.splice(i, 1); }
+      if (f.life <= 0) {
+        f.t.destroy();
+        this.floats.splice(i, 1);
+      }
     }
   }
 
@@ -592,7 +835,12 @@ function drawSlotLedgeCached(g: Graphics, unlocked: boolean) {
 function ridge(w: number, gy: number, amp: number, freq: number, seed: number, phase: number): number[] {
   const pts: number[] = [0, gy];
   for (let x = 0; x <= w + 20; x += 20) {
-    const y = gy - amp * (0.55 + 0.25 * Math.sin((x + phase) * 0.004 * freq + seed) + 0.2 * Math.sin((x + phase) * 0.011 * freq + seed * 2));
+    const y =
+      gy -
+      amp *
+        (0.55 +
+          0.25 * Math.sin((x + phase) * 0.004 * freq + seed) +
+          0.2 * Math.sin((x + phase) * 0.011 * freq + seed * 2));
     pts.push(x, y);
   }
   pts.push(w, gy);
@@ -601,21 +849,61 @@ function ridge(w: number, gy: number, amp: number, freq: number, seed: number, p
 
 function drawProjectile(g: Graphics, kind: string) {
   switch (kind) {
-    case 'rock': g.circle(0, 0, 3.4).fill(0x9ca3af); break;
-    case 'egg': g.ellipse(0, 0, 3.4, 2.6).fill(0xfef3c7); break;
-    case 'arrow': g.moveTo(-8, 0).lineTo(8, 0).stroke({ width: 1.6, color: 0xe5e7eb }); g.poly([8, 0, 4, -2.4, 4, 2.4]).fill(0xe5e7eb); break;
-    case 'catapult': g.circle(0, 0, 4.6).fill(0x6b7280); break;
-    case 'fire': g.circle(0, 0, 4.6).fill(0xf97316); g.circle(0, 0, 2.4).fill(0xfde047); break;
-    case 'oil': g.circle(0, 0, 3.6).fill(0xf59e0b); break;
-    case 'ball': g.circle(0, 0, 4.2).fill(0x1f2937); break;
-    case 'shell': g.ellipse(0, 0, 6, 3.2).fill(0x334155); g.rect(3, -2, 3, 4).fill(0xfacc15); break;
-    case 'bullet': g.rect(-6, -1, 12, 2).fill(0xfde047); break;
-    case 'rocket': g.rect(-7, -2, 12, 4).fill(0xe5e7eb); g.poly([5, -2, 10, 0, 5, 2]).fill(0xef4444); g.rect(-9, -1.4, 3, 2.8).fill(0xfb923c); break;
-    case 'laser': g.rect(-12, -1.6, 24, 3.2).fill({ color: 0x22d3ee, alpha: 0.35 }); g.rect(-10, -0.8, 20, 1.6).fill(0xe0ffff); break;
-    case 'plasma': g.circle(0, 0, 7).fill({ color: 0x8b5cf6, alpha: 0.35 }); g.circle(0, 0, 4).fill(0xc4b5fd); break;
-    case 'meteor': g.circle(0, 0, 9).fill(0x7c2d12); g.circle(-2, -2, 5).fill(0xf97316); g.circle(-3, -3, 2.4).fill(0xfde047); break;
-    case 'bomb': g.ellipse(0, 0, 4.4, 8).fill(0x1f2937); g.rect(-2, -11, 4, 4).fill(0x6b7280); break;
-    default: g.circle(0, 0, 2).fill(0xffffff);
+    case 'rock':
+      g.circle(0, 0, 3.4).fill(0x9ca3af);
+      break;
+    case 'egg':
+      g.ellipse(0, 0, 3.4, 2.6).fill(0xfef3c7);
+      break;
+    case 'arrow':
+      g.moveTo(-8, 0).lineTo(8, 0).stroke({ width: 1.6, color: 0xe5e7eb });
+      g.poly([8, 0, 4, -2.4, 4, 2.4]).fill(0xe5e7eb);
+      break;
+    case 'catapult':
+      g.circle(0, 0, 4.6).fill(0x6b7280);
+      break;
+    case 'fire':
+      g.circle(0, 0, 4.6).fill(0xf97316);
+      g.circle(0, 0, 2.4).fill(0xfde047);
+      break;
+    case 'oil':
+      g.circle(0, 0, 3.6).fill(0xf59e0b);
+      break;
+    case 'ball':
+      g.circle(0, 0, 4.2).fill(0x1f2937);
+      break;
+    case 'shell':
+      g.ellipse(0, 0, 6, 3.2).fill(0x334155);
+      g.rect(3, -2, 3, 4).fill(0xfacc15);
+      break;
+    case 'bullet':
+      g.rect(-6, -1, 12, 2).fill(0xfde047);
+      break;
+    case 'rocket':
+      g.rect(-7, -2, 12, 4).fill(0xe5e7eb);
+      g.poly([5, -2, 10, 0, 5, 2]).fill(0xef4444);
+      g.rect(-9, -1.4, 3, 2.8).fill(0xfb923c);
+      break;
+    case 'laser':
+      g.rect(-12, -1.6, 24, 3.2).fill({ color: 0x22d3ee, alpha: 0.35 });
+      g.rect(-10, -0.8, 20, 1.6).fill(0xe0ffff);
+      break;
+    case 'plasma':
+      g.circle(0, 0, 7).fill({ color: 0x8b5cf6, alpha: 0.35 });
+      g.circle(0, 0, 4).fill(0xc4b5fd);
+      break;
+    case 'meteor':
+      g.circle(0, 0, 9).fill(0x7c2d12);
+      g.circle(-2, -2, 5).fill(0xf97316);
+      g.circle(-3, -3, 2.4).fill(0xfde047);
+      break;
+    case 'bomb':
+      g.ellipse(0, 0, 4.4, 8).fill(0x1f2937);
+      g.rect(-2, -11, 4, 4).fill(0x6b7280);
+      break;
+    default:
+      g.circle(0, 0, 2).fill(0xffffff);
   }
 }
+
 export { TEAM };

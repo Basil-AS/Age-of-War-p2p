@@ -9,7 +9,9 @@ test('online 1v1: host creates room, friend joins by link, both stay in sync', a
   const a = await ctx.newPage();
   const b = await ctx.newPage();
   const errs: string[] = [];
-  for (const p of [a, b]) { p.on('pageerror', (e) => errs.push(String(e))); }
+  for (const p of [a, b]) {
+    p.on('pageerror', (e) => errs.push(String(e)));
+  }
 
   await a.goto('/?net=local');
   await a.getByText(/Play with a friend|Игра с другом/).click();
@@ -33,17 +35,27 @@ test('online 1v1: host creates room, friend joins by link, both stay in sync', a
   await a.screenshot({ path: '/tmp/shots/online-a.png' });
   await b.screenshot({ path: '/tmp/shots/online-b.png' });
 
-  const snap = (p: typeof a) => p.evaluate(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any; const m = w.__aow.match;
-    return { side: m.side, tick: m.sim.tick, desync: m.status.desync, lanes: m.sim.lanes.map((l: any[]) => l.length), gold: m.sim.players.map((p: any) => p.gold), hash: m.sim.hash() };
-  });
-  const sa = await snap(a); const sb = await snap(b);
-  expect(sa.side).toBe(0); expect(sb.side).toBe(1);
+  const snap = (p: typeof a) =>
+    p.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      const m = w.__aow.match;
+      return {
+        side: m.side,
+        tick: m.sim.tick,
+        desync: m.status.desync,
+        lanes: m.sim.lanes.map((l: any[]) => l.length),
+        gold: m.sim.players.map((p: any) => p.gold),
+        hash: m.sim.hash(),
+      };
+    });
+  const sa = await snap(a);
+  const sb = await snap(b);
+  expect(sa.side).toBe(0);
+  expect(sb.side).toBe(1);
   expect(sa.desync || sb.desync).toBe(false);
   expect(sa.gold[0]).toBeLessThan(175); // host spent gold
   expect(sa.gold[1]).toBeLessThan(175); // …and saw the guest spend too
-  expect(sb.gold[0]).toBe(sa.gold[0] === sb.gold[0] ? sb.gold[0] : sb.gold[0]);
   expect(errs).toEqual([]);
   await ctx.close();
 });

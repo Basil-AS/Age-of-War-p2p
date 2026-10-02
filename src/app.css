@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant short (@media (max-height: 540px));
+
 @theme {
   --color-ink: #0b1020;
   --color-panel: rgb(15 23 42 / 0.82);
@@ -34,3 +36,6 @@ input.field:focus { border-color: #fbbf24; }
 .ready { animation: pulse-ring 1.3s infinite; }
 @keyframes float-bg { from { background-position: 0 0 } to { background-position: 1200px 0 } }
 .menu-bg { background: radial-gradient(1200px 600px at 50% 110%, #7c2d12 0%, transparent 60%), linear-gradient(180deg, #0b1020, #1e1b4b 55%, #3b1d4a); }
+
+.rotate-hint { display: none; }
+@media (orientation: portrait) and (max-width: 700px) { .rotate-hint { display: grid; } }

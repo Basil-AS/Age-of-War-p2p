@@ -67,14 +67,34 @@ export class OnlineMatch implements Match {
     const sim = new Sim(seed);
     this.ls = new Lockstep(sim, side, tr, delay);
   }
-  get sim() { return this.ls.sim; }
-  get side() { return this.ls.side; }
-  get status() { return this.ls.status; }
-  get alpha() { return this.ls.alpha; }
-  get onOther() { return this.ls.onOther; }
-  set onOther(f) { this.ls.onOther = f; }
-  command(c: Cmd) { this.ls.command(c); }
-  update(now: number) { this.ls.update(now); }
-  send(m: Msg) { this.ls.send(m); }
-  destroy() { this.ls.destroy(); }
+  get sim() {
+    return this.ls.sim;
+  }
+  get side() {
+    return this.ls.side;
+  }
+  get status() {
+    return this.ls.status;
+  }
+  get alpha() {
+    return this.ls.alpha;
+  }
+  get onOther() {
+    return this.ls.onOther;
+  }
+  set onOther(f) {
+    this.ls.onOther = f;
+  }
+  command(c: Cmd) {
+    this.ls.command(c);
+  }
+  update(now: number) {
+    this.ls.update(now);
+  }
+  send(m: Msg) {
+    this.ls.send(m);
+  }
+  destroy() {
+    this.ls.destroy();
+  }
 }

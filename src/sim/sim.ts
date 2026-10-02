@@ -1,7 +1,22 @@
 import {
-  BASE_EDGE, BASE_HP, KILL_GOLD_MULT, KILL_XP_MULT, MAP_LEN, MAX_ALIVE, MAX_QUEUE, MIN_GAP,
-  SIM_HZ, SLOT_COST, SPECIAL_COOLDOWN, SPECIALS, START_GOLD, TURRETS, TURRET_SELL_RATIO, UNITS,
-  WALK_SPEED, XP_TO_EVOLVE,
+  BASE_EDGE,
+  BASE_HP,
+  KILL_GOLD_MULT,
+  KILL_XP_MULT,
+  MAP_LEN,
+  MAX_ALIVE,
+  MAX_QUEUE,
+  MIN_GAP,
+  SIM_HZ,
+  SLOT_COST,
+  SPECIAL_COOLDOWN,
+  SPECIALS,
+  START_GOLD,
+  TURRET_SELL_RATIO,
+  TURRETS,
+  UNITS,
+  WALK_SPEED,
+  XP_TO_EVOLVE,
 } from './data';
 import { Rng } from './rng';
 import type { ActiveSpecial, Cmd, Ev, Player, Side, Troop } from './types';
@@ -17,9 +32,19 @@ interface Strike {
 
 function newPlayer(free: boolean): Player {
   return {
-    gold: START_GOLD, xp: 0, age: 0, baseHp: BASE_HP[0] as number, baseMax: BASE_HP[0] as number,
-    queue: [], turrets: [null, null, null, null], turretCd: [-1, -1, -1, -1], slots: 1, specialCd: 0,
-    free, ageTick: 0, kills: 0,
+    gold: START_GOLD,
+    xp: 0,
+    age: 0,
+    baseHp: BASE_HP[0] as number,
+    baseMax: BASE_HP[0] as number,
+    queue: [],
+    turrets: [null, null, null, null],
+    turretCd: [-1, -1, -1, -1],
+    slots: 1,
+    specialCd: 0,
+    free,
+    ageTick: 0,
+    kills: 0,
   };
 }
 
@@ -68,16 +93,21 @@ export class Sim {
         if (u.tier === 3 && total >= 3) return false;
         return p.free || p.gold >= u.cost;
       }
-      case 'cancel': return !!p.queue[c.i];
+      case 'cancel':
+        return !!p.queue[c.i];
       case 'turret': {
         const t = TURRETS[c.id];
         if (!t || t.age !== p.age || c.slot < 0 || c.slot >= p.slots || p.turrets[c.slot] !== null) return false;
         return p.free || p.gold >= t.cost;
       }
-      case 'sell': return p.turrets[c.slot] !== null && p.turrets[c.slot] !== undefined;
-      case 'slot': return p.slots < 4 && (p.free || p.gold >= (SLOT_COST[p.slots - 1] as number));
-      case 'evolve': return p.age < 4 && (p.free || p.xp >= (XP_TO_EVOLVE[p.age] as number));
-      case 'special': return p.specialCd <= 0;
+      case 'sell':
+        return p.turrets[c.slot] !== null && p.turrets[c.slot] !== undefined;
+      case 'slot':
+        return p.slots < 4 && (p.free || p.gold >= (SLOT_COST[p.slots - 1] as number));
+      case 'evolve':
+        return p.age < 4 && (p.free || p.xp >= (XP_TO_EVOLVE[p.age] as number));
+      case 'special':
+        return p.specialCd <= 0;
     }
   }
 
@@ -188,8 +218,17 @@ export class Sim {
   private spawn(side: Side, def: number) {
     const u = UNITS[def] as (typeof UNITS)[number];
     const t: Troop = {
-      uid: this.nextUid++, side, def, x: side === 0 ? BASE_EDGE : MAP_LEN - BASE_EDGE, hp: u.hp, maxHp: u.hp,
-      cd: -1, mode: 0, moving: false, regenUntil: 0, born: this.tick,
+      uid: this.nextUid++,
+      side,
+      def,
+      x: side === 0 ? BASE_EDGE : MAP_LEN - BASE_EDGE,
+      hp: u.hp,
+      maxHp: u.hp,
+      cd: -1,
+      mode: 0,
+      moving: false,
+      regenUntil: 0,
+      born: this.tick,
     };
     this.lanes[side].push(t);
     this.ev({ k: 'spawn', side, uid: t.uid, def, x: t.x });
@@ -220,14 +259,23 @@ export class Sim {
       let target: Troop | null = null;
       if (front) {
         const d = (front.x - t.x) * dir;
-        if (u.melee > 0 && d <= u.meleeRange) { mode = 1; target = front; }
-        else if (u.ranged > 0 && d <= u.rangedRange) { mode = 2; target = front; }
+        if (u.melee > 0 && d <= u.meleeRange) {
+          mode = 1;
+          target = front;
+        } else if (u.ranged > 0 && d <= u.rangedRange) {
+          mode = 2;
+          target = front;
+        }
       } else {
         const d = (baseX - t.x) * dir;
         if (u.melee > 0 && d <= u.meleeRange) mode = 1;
         else if (u.ranged > 0 && d <= u.rangedRange) mode = 2;
       }
-      if (mode === 0) { t.cd = -1; t.mode = 0; continue; }
+      if (mode === 0) {
+        t.cd = -1;
+        t.mode = 0;
+        continue;
+      }
       if (mode !== t.mode || t.cd < 0) t.cd = mode === 1 ? u.meleeFirst : u.rangedFirst;
       t.mode = mode;
       t.cd--;
@@ -236,7 +284,17 @@ export class Sim {
       t.cd = mode === 1 ? u.meleeEvery : t.moving ? u.rangedWalkEvery : u.rangedStandEvery;
       strikes.push({ target, victimSide: (1 - side) as Side, dmg });
       if (mode === 1) this.ev({ k: 'melee', uid: t.uid, target: target ? target.uid : 0, side });
-      else this.ev({ k: 'shot', side, from: t.x, to: target ? target.x : baseX, def: t.def, turret: -1, slot: -1, uid: t.uid });
+      else
+        this.ev({
+          k: 'shot',
+          side,
+          from: t.x,
+          to: target ? target.x : baseX,
+          def: t.def,
+          turret: -1,
+          slot: -1,
+          uid: t.uid,
+        });
     }
   }
 
@@ -248,7 +306,10 @@ export class Sim {
       const id = p.turrets[s];
       if (id === null || id === undefined) continue;
       const td = TURRETS[id] as (typeof TURRETS)[number];
-      if (!front || (front.x - (TURRET_X[side] as number)) * dir > td.range) { p.turretCd[s] = -1; continue; }
+      if (!front || (front.x - (TURRET_X[side] as number)) * dir > td.range) {
+        p.turretCd[s] = -1;
+        continue;
+      }
       if ((p.turretCd[s] as number) < 0) p.turretCd[s] = td.first;
       p.turretCd[s] = (p.turretCd[s] as number) - 1;
       if ((p.turretCd[s] as number) > 0) continue;
@@ -266,7 +327,14 @@ export class Sim {
       } else {
         const p = this.players[s.victimSide];
         p.baseHp -= s.dmg;
-        this.ev({ k: 'hit', x: s.victimSide === 0 ? BASE_EDGE : MAP_LEN - BASE_EDGE, side: s.victimSide, dmg: s.dmg, base: true, big: s.dmg >= 150 });
+        this.ev({
+          k: 'hit',
+          x: s.victimSide === 0 ? BASE_EDGE : MAP_LEN - BASE_EDGE,
+          side: s.victimSide,
+          dmg: s.dmg,
+          base: true,
+          big: s.dmg >= 150,
+        });
       }
     }
     this.reap();
@@ -314,7 +382,10 @@ export class Sim {
     for (const t of enemy) {
       const u = UNITS[t.def] as (typeof UNITS)[number];
       const d = Math.abs(t.x - x);
-      if (d <= 20 + u.length / 2 && d < bd) { bd = d; best = t; }
+      if (d <= 20 + u.length / 2 && d < bd) {
+        bd = d;
+        best = t;
+      }
     }
     if (best) best.hp -= def.damage;
     this.ev({ k: 'special', side: sp.side, kind: def.kind, x, dmg: def.damage, hit: !!best, idx: i });
@@ -330,13 +401,29 @@ export class Sim {
       h = Math.imul(h ^ (u32[0] as number), 16777619);
       h = Math.imul(h ^ (u32[1] as number), 16777619);
     };
-    mix(this.tick); mix(this.rng.s); mix(this.winner);
+    mix(this.tick);
+    mix(this.rng.s);
+    mix(this.winner);
     for (const p of this.players) {
-      mix(p.gold); mix(p.xp); mix(p.age); mix(p.baseHp); mix(p.specialCd); mix(p.slots);
-      for (const q of p.queue) { mix(q.def); mix(q.left); }
+      mix(p.gold);
+      mix(p.xp);
+      mix(p.age);
+      mix(p.baseHp);
+      mix(p.specialCd);
+      mix(p.slots);
+      for (const q of p.queue) {
+        mix(q.def);
+        mix(q.left);
+      }
       for (const t of p.turrets) mix(t ?? -1);
     }
-    for (const lane of this.lanes) for (const t of lane) { mix(t.uid); mix(t.x); mix(t.hp); mix(t.cd); }
+    for (const lane of this.lanes)
+      for (const t of lane) {
+        mix(t.uid);
+        mix(t.x);
+        mix(t.hp);
+        mix(t.cd);
+      }
     return h >>> 0;
   }
 }
