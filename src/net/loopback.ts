@@ -27,7 +27,10 @@ export function createLoopbackPair(opts: {
       close: () => {},
       pump: () => {
         const box = boxes[me];
-        while (box.length && (box[0] as Pending).at <= clock.now()) t.onMessage?.((box.shift() as Pending).m);
+        while (box.length && (box[0] as Pending).at <= clock.now()) {
+          const { m } = box.shift() as Pending; // dropped if the other side is not listening yet (like a real channel)
+          t.onMessage?.(m);
+        }
       },
     };
     return t;

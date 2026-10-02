@@ -1,3 +1,4 @@
+import { startKeepAlive } from '../../lib/keepalive';
 import { connectLadder, type Ladder, type RungId, type RungState } from '../../net/connect';
 import { ManualPeer } from '../../net/manual';
 import { guestHandshake, hostHandshake } from '../../net/session';
@@ -172,6 +173,9 @@ export async function boot(canvas: HTMLCanvasElement) {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
+  startKeepAlive(() => {
+    if (document.hidden && match?.online && !app.paused) match.update(performance.now());
+  });
   (window as unknown as { __aow: unknown }).__aow = {
     get match() {
       return match;

@@ -133,6 +133,7 @@ export interface Ladder {
 
 /** true when the game was opened from a private/LAN address (i.e. served by server/lan.mjs) */
 export function isLanServed(): boolean {
+  if (typeof location === 'undefined') return false;
   const h = location.hostname;
   return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.)/.test(h) || h === 'localhost' || h.endsWith('.local');
 }

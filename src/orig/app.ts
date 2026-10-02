@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Rectangle } from 'pixi.js';
+import { startKeepAlive } from '../lib/keepalive';
 import type { Match } from '../net/match';
 import { OrigAssets } from './assets';
 import { Clip, Flash } from './flash';
@@ -64,8 +65,11 @@ export class OrigApp {
     this.app.stage.addChild(this.root);
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = new Rectangle(-5000, -5000, 10000, 10000);
+    // Pixi resizes its screen from its own window listener; lay out after *its* resize event so we never use a stale size
+    this.app.renderer.on('resize', () => this.layout());
     window.addEventListener('resize', () => {
-      this.app.renderer.resolution = pickResolution();
+      const r = pickResolution();
+      if (Math.abs(this.app.renderer.resolution - r) > 0.01) this.app.renderer.resolution = r;
       this.layout();
     });
     window.addEventListener('keydown', this.keyHandler);
@@ -175,6 +179,9 @@ export class OrigApp {
   }
 
   private start() {
+    startKeepAlive(() => {
+      if (document.hidden && this.match?.online && !this.paused) this.match.update(performance.now());
+    });
     this.app.ticker.add((t) => {
       const now = performance.now();
       this.screens?.tick();
