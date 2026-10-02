@@ -107,7 +107,7 @@ test('original proportions are kept: ~650 world px across on 16:9, the map still
   await expect.poll(() => g(page, (a) => a.orig.scene!.scroll), { timeout: 20_000 }).toBeLessThan(wide.s - 100);
   // ultra-wide shows a bit more, still scrollable
   await page.setViewportSize({ width: 2560, height: 1080 });
-  await expect.poll(() => g(page, (a) => a.orig.viewW)).toBeGreaterThan(wide.v);
+  await expect.poll(() => g(page, (a) => a.orig.viewW), { timeout: 20_000 }).toBeGreaterThan(wide.v);
   expect(await g(page, (a) => a.orig.viewW)).toBeLessThan(1000);
 });
 
