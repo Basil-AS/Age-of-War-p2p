@@ -104,7 +104,9 @@ export class OrigAssets {
     return { tex: t, ox: f.ox, oy: f.oy };
   }
   private atlasTexSync(i: number): Texture | null {
-    return Assets.get<Texture>(`${this.base}${this.quality}/${(this.manifest.atlases[i] as { file: string }).file}`) ?? null;
+    return (
+      Assets.get<Texture>(`${this.base}${this.quality}/${(this.manifest.atlases[i] as { file: string }).file}`) ?? null
+    );
   }
   has(key: string) {
     return key in this.manifest.frames;
