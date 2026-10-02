@@ -20,6 +20,21 @@ interface Manifest {
   frames: Record<string, FrameInfo>;
 }
 
+export type Quality = 'hd' | 'sd';
+
+/** hd = 3× art (≈7 MB per era, big GPU textures), sd = 2×. Auto: sd on phones/low-memory devices; `?q=hd|sd` or localStorage overrides. */
+export function pickQuality(): Quality {
+  try {
+    const q = new URLSearchParams(location.search).get('q') ?? localStorage.getItem('aow.q');
+    if (q === 'hd' || q === 'sd') return q;
+  } catch {
+    /* storage blocked */
+  }
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  return coarse || (nav.deviceMemory !== undefined && nav.deviceMemory < 4) ? 'sd' : 'hd';
+}
+
 /** Lazy, bucketed access to the packed original artwork (core + ui up front, one bucket per era on demand). */
 export class OrigAssets {
   data!: OrigData;
@@ -29,14 +44,17 @@ export class OrigAssets {
   private tex = new Map<string, Texture>();
   private atlasTex = new Map<number, Promise<Texture>>();
   private loadedBuckets = new Set<string>();
-  constructor(readonly base: string) {}
+  constructor(
+    readonly base: string,
+    readonly quality: Quality = pickQuality(),
+  ) {}
 
   async init(): Promise<void> {
     const get = async <T>(f: string) => (await fetch(this.base + f)).json() as Promise<T>;
     [this.data, this.ui, this.manifest, this.fonts] = await Promise.all([
       get<OrigData>('data.json'),
       get<UiData>('ui.json'),
-      get<Manifest>('manifest.json'),
+      get<Manifest>(`${this.quality}/manifest.json`),
       get<Record<string, GlyphFont>>('fonts.json'),
     ]);
     await Promise.all([this.loadBucket('core'), this.loadBucket('ui')]);
@@ -57,8 +75,8 @@ export class OrigAssets {
     let p = this.atlasTex.get(i);
     if (!p) {
       p = Assets.load<Texture>({
-        src: this.base + (this.manifest.atlases[i] as { file: string }).file,
-        data: { scaleMode: 'linear', autoGenerateMipmaps: true },
+        src: `${this.base}${this.quality}/${(this.manifest.atlases[i] as { file: string }).file}`,
+        data: { scaleMode: 'linear' },
       });
       this.atlasTex.set(i, p);
     }
@@ -86,7 +104,7 @@ export class OrigAssets {
     return { tex: t, ox: f.ox, oy: f.oy };
   }
   private atlasTexSync(i: number): Texture | null {
-    return Assets.get<Texture>(this.base + (this.manifest.atlases[i] as { file: string }).file) ?? null;
+    return Assets.get<Texture>(`${this.base}${this.quality}/${(this.manifest.atlases[i] as { file: string }).file}`) ?? null;
   }
   has(key: string) {
     return key in this.manifest.frames;

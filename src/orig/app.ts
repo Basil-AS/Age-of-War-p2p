@@ -59,7 +59,8 @@ export class OrigApp {
     this.flash = new Flash(this.assets);
     await this.flash.loadFonts();
     this.audio = new OrigAudio((id) => this.assets.snd(id));
-    await Promise.all([this.assets.loadBucket('e1'), this.assets.loadBucket('e2')]);
+    await this.assets.loadBucket('e1');
+    void this.assets.loadBucket('e2'); // the next era streams in behind the title screen
     this.app.stage.addChild(this.root);
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = new Rectangle(-5000, -5000, 10000, 10000);
