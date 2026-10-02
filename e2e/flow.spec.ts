@@ -129,3 +129,17 @@ test('online: both screens agree on the winner when a base falls', async ({ brow
   await a.screenshot({ path: '/tmp/shots/flow-online-result.png' });
   expect(errs).toEqual([]);
 });
+
+test('network check panel: probes run, a verdict and a copyable report appear', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+  await page.goto('/original.html');
+  await page.waitForFunction(() => (window as unknown as W).__aow?.app.phase === 'title', null, { timeout: 90_000 });
+  await page.evaluate(() => {
+    (window as unknown as { __aow: { app: { overlay: string } } }).__aow.app.overlay = 'friend';
+  });
+  await page.getByTestId('netcheck-run').click();
+  await expect(page.getByTestId('netcheck-results')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /📋/ })).toBeVisible({ timeout: 20_000 });
+  const rows = await page.getByTestId('netcheck-results').locator('div.flex').count();
+  expect(rows).toBeGreaterThan(8); // 5 STUN + TURN + 6 Nostr + 3 MQTT
+});

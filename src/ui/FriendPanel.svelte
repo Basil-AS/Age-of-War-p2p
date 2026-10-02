@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, closeOverlay, hostRoom, joinRoom, manualStart, setName, tr } from '../lib/app.svelte';
+  import NetCheck from './NetCheck.svelte';
   let code = $state('');
 </script>
 
@@ -19,6 +20,7 @@
       <button class="btn btn-ghost text-sm" onclick={() => manualStart('host')}>{tr('manualHost')}</button>
       <button class="btn btn-ghost text-sm" onclick={() => manualStart('guest')}>{tr('manualGuest')}</button>
     </div>
+    <NetCheck />
     <button class="btn btn-ghost" onclick={closeOverlay}>← {tr('back')}</button>
   </div>
 </div>

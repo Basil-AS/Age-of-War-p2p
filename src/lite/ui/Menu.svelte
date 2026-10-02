@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, hostRoom, joinRoom, manualStart, setDifficulty, setLang, setCompat, setMusicOn, setName, setVol, startSolo, tr, trList } from '../lib/app.svelte';
+  import NetCheck from '../../ui/NetCheck.svelte';
   import VersionSwitch from '../../ui/VersionSwitch.svelte';
   import type { Difficulty } from '../sim/types';
 
@@ -57,6 +58,7 @@
           <button class="btn btn-ghost text-sm" onclick={() => manualStart('host')}>{tr('manualHost')}</button>
           <button class="btn btn-ghost text-sm" onclick={() => manualStart('guest')}>{tr('manualGuest')}</button>
         </div>
+        <NetCheck />
         <button class="btn btn-ghost" onclick={() => (panel = 'main')}>← {tr('back')}</button>
       {:else if panel === 'howto'}
         <ul class="flex flex-col gap-3 text-sm leading-relaxed">
