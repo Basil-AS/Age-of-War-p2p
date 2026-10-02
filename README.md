@@ -1,112 +1,54 @@
-# ⚔️ Age of War P2P
+# Age of War — 1v1 online
 
-Современный ремейк классической Flash-игры **Age of War** — с дуэлью **1 на 1 против друга прямо в браузере**.
-Без сервера, без регистрации: два браузера соединяются напрямую (WebRTC), в игре идут только команды игроков.
+The original Flash **Age of War** (650×450, 40 fps), ported to a modern web stack and playable
+against a friend straight from the browser. Graphics, animations, sounds, UI and unit stats are the
+original ones, extracted from the game's SWF; the game logic is a deterministic TypeScript port of
+its ActionScript.
 
-*A modern, open-source remake of the classic Flash game "Age of War" with peer-to-peer 1v1 — no game server, no accounts.*
+**Play:** https://basil-as.github.io/Age-of-War-p2p/ — open it, pick *Play with a friend*, send the link.
 
-## Играть
+## Stack
+Vite 8 · TypeScript · PixiJS 8 (own mini Flash display-list engine) · Svelte 5 overlays · Tailwind 4 ·
+Trystero / WebRTC · Vitest · Playwright · Biome · PWA.
 
-```bash
-npm install
+## How it works
+- `tools/swf/` — parses the SWF and generates `public/orig/` (sprite atlases per era, data tables, sounds, fonts).
+  Rebuild with `node tools/swf/build-assets.mjs public/orig && node tools/swf/build-data.mjs public/orig`
+  (needs the SWF export, see the env vars at the top of those scripts).
+- `src/orig/sim.ts` — deterministic simulation (own PRNG, own trig) so two browsers stay in lockstep.
+- `src/net/` — lockstep (4-tick turns, input delay, state hash check) over a **connection ladder**.
+
+## Connection ladder (fault tolerant)
+The host listens on every route at once; the guest walks down them. First live peer wins, direct routes get a head start.
+
+| # | Route | Notes |
+|---|-------|-------|
+| 0 | **LAN** (`server/lan.mjs`) | same network, no internet, ≈1 ms |
+| 1–3 | WebRTC, signalling via Nostr / BitTorrent / MQTT | direct P2P, lowest ping |
+| 4 | WebRTC via TURN (443/TCP too) | strict NAT, blocked UDP |
+| 5–6 | Game frames over Nostr / MQTT relays (wss) | no WebRTC at all |
+| 7 | Your own relay (`?ws=`, `VITE_WS_RELAY`) | `server/relay.mjs` |
+| – | Manual copy-paste codes (works on LAN with no internet) | no servers |
+
+The ping badge turns red above 150 ms. For consistently low ping (e.g. from Russia) host your own
+TURN + relay near both players: see [`deploy/`](deploy/) — build with `VITE_TURN` / `VITE_WS_RELAY`.
+
+### Same local network
+```
+npm ci && npm run build && node server/lan.mjs      # prints http://192.168.x.x:8080
+```
+Both players open that address → *Play with a friend*. Works without internet.
+
+## Opponent AI
+Settings → *Opponent AI*: **Smart** (default; the bot pays for units/turrets, earns gold/xp from kills,
+evolves, buys slots, uses its special) or **Classic** (the original script that spawns units for free).
+
+## Develop
+```
+npm ci
 npm run dev        # http://localhost:5173
+npm test           # sim + lockstep unit tests
+npm run e2e        # Playwright (visual, solo, PvP over BroadcastChannel and WS relay)
 ```
 
-* **Игра с другом** → «Создать комнату» → отправьте другу ссылку (или 5-буквенный код). Всё.
-* **Игра против ИИ** — оригинальный скриптовый противник из Age of War, 4 уровня сложности.
-* Работает на телефоне (ландшафт), ставится как PWA, русский и английский языки.
-
-Горячие клавиши: `1–4` — юниты, `Q W E` — башни, `R` — слот под башню, `F` — продать, `Пробел` — спецудар, `Enter` — эволюция, `Esc` — меню.
-
-### Хостинг одним кликом (GitHub Pages)
-
-В репозитории есть workflow `.github/workflows/deploy.yml`. Включите **Settings → Pages → Source: GitHub Actions** —
-после пуша в `main` игра будет доступна по ссылке `https://<user>.github.io/<repo>/`. Эту ссылку и шлёте другу.
-
-## Что внутри (стек 2026)
-
-| Слой | Технология |
-|---|---|
-| Сборка / dev | **Vite 8**, **TypeScript** (strict) |
-| Рендер | **PixiJS 8** (WebGL, опционально WebGPU: `?gpu`) — вся графика рисуется кодом, без файлов-ассетов |
-| UI | **Svelte 5** (runes) + **Tailwind CSS 4** |
-| Сеть | **Trystero** (WebRTC) + лестница fallback-маршрутов: Nostr/BitTorrent/MQTT-сигналинг → TURN → игра через Nostr/MQTT/WebSocket-реле → ручные коды |
-| Движок | собственный **детерминированный lockstep** на фиксированных 41 тиках/с |
-| Звук | процедурный WebAudio (эффекты + генеративная музыка), 0 КБ ассетов |
-| Тесты | **Vitest** (правила, баланс, сеть с лагами/джиттером), **Playwright** (реальный WebRTC между двумя браузерами) |
-| Качество | **Biome**, `svelte-check`, GitHub Actions CI, PWA (offline против ИИ) |
-
-### Как устроен P2P
-
-```
- Игрок A ──┐                         ┌── Игрок B
-  команды  │   WebRTC (напрямую)     │  команды
-   sim.step ◄──────────────────────► sim.step      обе стороны считают ОДНУ И ТУ ЖЕ игру
-```
-
-* Симуляция (`src/sim`) — чистый детерминированный код: свой PRNG (mulberry32), никаких `Math.random`/времени/тригонометрии.
-* Каждый ход (4 тика ≈ 98 мс) стороны обмениваются **только командами** (десятки байт). Ход выполняется, когда известны команды обоих игроков; команды планируются на `delay` ходов вперёд (хост измеряет RTT и выбирает задержку).
-* Каждые 5 ходов сверяются хэши состояния — любая рассинхронизация ловится сразу и показывается в игре.
-* GitHub Pages только раздаёт файлы игры. Игрового сервера нет.
-
-### Отказоустойчивое соединение (лестница маршрутов)
-
-Сети бывают разные: где-то режут UDP/WebRTC, где-то блокируют отдельные реле или протоколы. Поэтому игра не зависит от одного пути:
-хост слушает **все** маршруты сразу, гость идёт сверху вниз (лучшие первыми, следующие подключаются, если не вышло), побеждает первый живой, остальные закрываются.
-
-| # | Маршрут | Что нужно | Задержка |
-|---|---|---|---|
-| 1 | WebRTC, сигналинг через **Nostr** | UDP/WebRTC + wss | минимальная (напрямую) |
-| 2 | WebRTC, сигналинг через **BitTorrent**-трекеры | то же, другая инфраструктура | минимальная |
-| 3 | WebRTC, сигналинг через **MQTT** | то же, другая инфраструктура | минимальная |
-| 4 | WebRTC **через TURN** | TURN на 443/TCP (строгий NAT, режут UDP) | средняя |
-| 5 | Игра через **Nostr-реле** (без WebRTC) | только исходящий wss/443 | выше (≈ сотни мс) |
-| 6 | Игра через **MQTT-брокеры** (без WebRTC) | только исходящий wss | выше |
-| 7 | Свой **WebSocket-реле** (`server/relay.mjs`, опционально) | сервер, который вы контролируете | зависит от сервера |
-| ✋ | **Ручной режим без серверов**: два кода через мессенджер | только WebRTC | минимальная |
-
-* Если в браузере вообще нет WebRTC (политика, расширение, Brave Shields) — маршруты 1–4 помечаются «недоступно» сразу, игра идёт через 5–7.
-* В маршрутах 5–7 кадры шифруются AES-GCM по коду комнаты (реле видят только шум), доставка надёжная: номера, подтверждения, повторы и дедупликация — проверено на потере 30 % пакетов, дублях и перестановках.
-* В лобби видно, какие маршруты пробуются и какой сработал; в игре — бейдж «напрямую P2P / через TURN / через сервер».
-* «Режим совместимости» в настройках пропускает WebRTC и сразу играет через ретрансляторы.
-* Свой сервер: `node server/relay.mjs` и `?ws=wss://ваш-хост` (или сборка с `VITE_WS_RELAY`). Свой TURN: `?turn=turn:host:443|user|pass`. Свои Nostr-реле: `?relayUrl=wss://…`.
-* Бесплатный публичный TURN (openrelay) — «как есть», может быть перегружен или недоступен; для гарантии поставьте свой (coturn).
-
-## Баланс и правила — как в оригинале
-
-Цифры взяты из оригинальной игры (по открытому разбору ActionScript в [erupturatis/Age-of-war-unity-clone](https://github.com/erupturatis/Age-of-war-unity-clone)):
-
-* 5 эпох (Каменный век → Будущее), 16 юнитов (в т.ч. Суперсолдат), 15 башен, 5 спецударов
-  (метеориты 22×200, град стрел 40×200, исцеление 14,6 с, бомбардировка 15×400, орбитальные лазеры 18×1000).
-* Стоимость, HP, урон, дальность и скорость атаки каждого юнита; HP баз 500/1100/2000/3200/4700;
-  опыт для эволюции 4000/14000/45000/200000; слоты башен 1000/3000/7500; продажа башни за 50 %; награда за убийство = 1,3× цена золота и ×2 опыта.
-* Очередь обучения до 5 юнитов, до 20 юнитов на поле, все атакуют первого врага в колонне — как в оригинале.
-* ИИ: 30 % шанс нанять юнита раз в секунду (не больше 6 на поле), второй/третий тир через 1500/5000 кадров, эволюция через 8000 кадров, башни по фиксированному расписанию.
-
-## Разработка
-
-```bash
-npm test            # правила, детерминизм, ИИ, lockstep при лаге 200±150 мс, детект рассинхронизации
-npm run check       # svelte-check + TypeScript
-npm run lint        # Biome
-npm run build && npm run e2e   # Playwright: соло, мобильный лэйаут, онлайн 1v1, реальный WebRTC, все fallback-маршруты, ручной режим, реванш
-```
-
-`npm run e2e` поднимает локальные Nostr-реле, MQTT-брокер и WebSocket-реле (`e2e/tools/relay.mjs`, `server/relay.mjs`), поэтому тесты не требуют интернета
-(`WEBRTC_PUBLIC=1` — прогнать WebRTC-тест через настоящие публичные реле). Если Chromium лежит не в стандартном месте: `CHROMIUM_PATH=/path/to/chrome`.
-
-```
-src/sim/      детерминированное ядро: data (оригинальные цифры), sim, ai, rng
-src/net/      lockstep, session (рукопожатие), transports: trystero (WebRTC), local, loopback (тесты)
-src/render/   PixiJS: процедурная графика (art.ts) и сцена/эффекты (renderer.ts)
-src/ui/       Svelte 5: меню, лобби, HUD, оверлеи
-src/lib/      состояние приложения (runes), i18n
-```
-
-## Благодарности и честность
-
-Age of War — игра Louissi / Max Games; это неофициальный фанатский ремейк с оригинальным кодом и графикой, нарисованной процедурно (спрайты оригинала не используются).
-Исследованы открытые реализации: [erupturatis/Age-of-war-unity-clone](https://github.com/erupturatis/Age-of-war-unity-clone) (оригинальные цифры и правила ИИ),
-[ataberkus/age-of-war-clone](https://github.com/ataberkus/age-of-war-clone) (веб-подход, мобильный UX, очередь производства),
-[Pukaty-LR/AgesOfWar](https://github.com/Pukaty-LR/AgesOfWar), [bondyfan/era-battle](https://github.com/bondyfan/era-battle), [apiotrowski255/age-of-war](https://github.com/apiotrowski255/age-of-war).
-Код из них не копировался — движок написан заново.
+See [`docs/COMPARISON.md`](docs/COMPARISON.md) for how this relates to other open-source clones and [`NOTICE.md`](NOTICE.md) for credits.

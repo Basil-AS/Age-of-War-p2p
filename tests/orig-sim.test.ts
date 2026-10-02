@@ -80,4 +80,18 @@ describe('original port', () => {
     console.log('pvp bot wins [unfinished,p1,p2]', wins);
     expect(wins[1]! + wins[2]!).toBeGreaterThan(0);
   });
+
+  it('the smart bot pays for its units and finishes a game', () => {
+    const sim = new OrigSim(data, 5, { ai: false, bot: true, diff: 2 });
+    sim.emit = false;
+    let spawned = 0;
+    for (let i = 0; i < FPS * 60 * 25 && !sim.winner; i++) {
+      const before = sim.units.filter((u) => u.side === 2).length;
+      sim.step(bot(sim, 1), []);
+      spawned += Math.max(0, sim.units.filter((u) => u.side === 2).length - before);
+      expect(sim.player(2).cash).toBeGreaterThanOrEqual(0);
+    }
+    expect(spawned).toBeGreaterThan(3);
+    expect(sim.winner).not.toBe(0);
+  });
 });

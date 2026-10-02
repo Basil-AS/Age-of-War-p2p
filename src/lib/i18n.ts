@@ -92,6 +92,7 @@ export const ROUTE_NAMES: Record<Lang, Record<string, string>> = {
     'relay-nostr': 'Relay servers · Nostr',
     'relay-mqtt': 'Relay servers · MQTT',
     'relay-ws': 'Relay · own server',
+    lan: 'Local network (LAN)',
     local: 'Same device',
     manual: 'Manual codes',
   },
@@ -103,6 +104,7 @@ export const ROUTE_NAMES: Record<Lang, Record<string, string>> = {
     'relay-nostr': 'Через серверы · Nostr',
     'relay-mqtt': 'Через серверы · MQTT',
     'relay-ws': 'Через свой сервер',
+    lan: 'Локальная сеть (LAN)',
     local: 'Одно устройство',
     manual: 'Ручной обмен кодами',
   },
@@ -126,8 +128,8 @@ export const STATUS_NAMES: Record<Lang, Record<string, string>> = {
   },
 };
 export const VIA_NAMES: Record<Lang, Record<string, string>> = {
-  en: { direct: 'direct P2P', turn: 'via TURN', relay: 'via relay', local: 'same device' },
-  ru: { direct: 'напрямую P2P', turn: 'через TURN', relay: 'через сервер', local: 'одно устройство' },
+  en: { direct: 'direct P2P', turn: 'via TURN', relay: 'via relay', lan: 'LAN', local: 'same device' },
+  ru: { direct: 'напрямую P2P', turn: 'через TURN', relay: 'через сервер', lan: 'LAN', local: 'одно устройство' },
 };
 
 const en = {
@@ -227,6 +229,9 @@ const en = {
   badCode: 'That code does not look right',
   manualConnecting: 'Connecting…',
   preparing: 'Preparing…',
+  aiMode: 'Opponent AI',
+  aiSmart: 'Smart (pays for units, real economy)',
+  aiClassic: 'Classic (original: free units)',
   compat: 'Compatibility mode (skip WebRTC)',
   compatHint:
     'Use it if your network or browser blocks WebRTC. The game then flows through relay servers (a little more lag).',
@@ -329,6 +334,9 @@ const ru: typeof en = {
   badCode: 'Код не подходит',
   manualConnecting: 'Соединяемся…',
   preparing: 'Готовим…',
+  aiMode: 'ИИ противника',
+  aiSmart: 'Умный (платит за юнитов, честная экономика)',
+  aiClassic: 'Классика (как в оригинале: юниты бесплатно)',
   compat: 'Режим совместимости (без WebRTC)',
   compatHint:
     'Включите, если сеть или браузер блокируют WebRTC. Игра пойдёт через серверы-ретрансляторы (чуть больше задержка).',

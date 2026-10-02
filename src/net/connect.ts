@@ -7,7 +7,16 @@ import type { Transport } from './transport';
 import { createTrysteroTransport, PUBLIC_TURN, type TurnServer } from './trystero';
 import { createWsPipe } from './wspipe';
 
-export type RungId = 'nostr' | 'torrent' | 'mqtt' | 'turn' | 'relay-nostr' | 'relay-mqtt' | 'relay-ws' | 'local';
+export type RungId =
+  | 'nostr'
+  | 'torrent'
+  | 'mqtt'
+  | 'turn'
+  | 'relay-nostr'
+  | 'relay-mqtt'
+  | 'relay-ws'
+  | 'lan'
+  | 'local';
 export type RungStatus = 'waiting' | 'trying' | 'slow' | 'connected' | 'failed' | 'closed';
 export interface RungState {
   id: RungId;
@@ -98,6 +107,20 @@ export const RUNGS: RungDef[] = [
     make: async (c) =>
       createReliableTransport(createWsPipe(c.code, c.params.get('ws') || WS_RELAY), c.code, { flushMs: 60 }),
   },
+  {
+    // the page itself is served by `server/lan.mjs` on the local network → same-LAN relay, ~1 ms
+    id: 'lan',
+    startAt: 0,
+    needsWebRtc: false,
+    make: async (c) =>
+      createReliableTransport(
+        createWsPipe(c.code, `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`),
+        c.code,
+        {
+          flushMs: 16,
+        },
+      ),
+  },
   { id: 'local', startAt: 0, needsWebRtc: false, make: async (c) => createLocalTransport(c.code) },
 ];
 
@@ -107,11 +130,18 @@ export interface Ladder {
   cancel(): void;
 }
 
+/** true when the game was opened from a private/LAN address (i.e. served by server/lan.mjs) */
+export function isLanServed(): boolean {
+  const h = location.hostname;
+  return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.)/.test(h) || h === 'localhost' || h.endsWith('.local');
+}
+
 export function enabledRungs(params: URLSearchParams): RungDef[] {
   if (params.get('net') === 'local') return RUNGS.filter((r) => r.id === 'local');
   const only = list(params.get('rungs'));
   return RUNGS.filter((r) => {
     if (r.id === 'local') return false;
+    if (r.id === 'lan') return isLanServed() || only?.includes('lan') === true;
     if (r.id === 'relay-ws' && !(params.get('ws') || WS_RELAY)) return false;
     return only ? only.includes(r.id) : true;
   });
@@ -187,7 +217,18 @@ export function connectLadder(
           if (role === 'host') {
             if (handshaking) return;
             handshaking = d.id; // host decides: first rung with a live peer wins
-            void hostHandshake(t, name).then((hs) => finish(d.id, t, hs));
+            // a server-relayed rung can beat WebRTC by milliseconds yet cost 100+ ms of ping every
+            // frame: give the direct routes a short head start (not on LAN, which is already best)
+            const wait = !d.needsWebRtc && d.id !== 'lan' && hasRtc && !params.has('net') ? 1500 : 0;
+            setTimeout(() => {
+              if (cancelled || (chosen && chosen !== d.id)) return;
+              const better = [...live].find(
+                ([id, lt]) => id !== d.id && lt.connected && defs.find((x) => x.id === id)?.needsWebRtc,
+              );
+              const use = better && wait ? better : ([d.id, t] as const);
+              handshaking = use[0];
+              void hostHandshake(use[1], name).then((hs) => finish(use[0], use[1], hs));
+            }, wait);
           } else {
             void guestHandshake(t, name).then((hs) => finish(d.id, t, hs));
           }

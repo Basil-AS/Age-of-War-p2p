@@ -7,7 +7,9 @@
  * variables (cash, xp, tech level, turrets, special, heal aura) exist twice. Trig is deterministic
  * (src/orig/dmath.ts) and every random() comes from one seeded stream so two browsers stay in lockstep.
  */
+
 import { Rng } from '../sim/rng';
+import { Bot } from './bot';
 import { DEG, datan2, dcos, dsin, RAD2DEG } from './dmath';
 import type { Box, ClipData, Cmd, Ev, Op, OrigData, Side, TurretData, UnitData } from './types';
 
@@ -217,6 +219,8 @@ export interface SimOpts {
   ai: boolean;
   /** 1 normal, 2 harder (x1.3), 3 impossible (x2) */
   diff: 1 | 2 | 3;
+  /** side 2 is a fair bot that pays for everything (requires ai=false) */
+  bot?: boolean;
 }
 
 export class OrigSim {
@@ -233,6 +237,7 @@ export class OrigSim {
   rng: Rng;
   events: Ev[] = [];
   emit = true;
+  private bot: Bot | null = null;
   private b = 1; // unit counter
   private bi = 0; // bullet counter
   // base_comp AI state
@@ -256,6 +261,7 @@ export class OrigSim {
     readonly opts: SimOpts = { ai: true, diff: 1 },
   ) {
     this.rng = new Rng(seed);
+    if (opts.bot) this.bot = new Bot(2, opts.diff);
     this.players = [newPlayer(1, 175), newPlayer(2, opts.ai ? 100 : 175)];
     const mk = (side: Side, x: number, hit: Box) => ({
       uid: side === 1 ? 'base1' : 'base2',
@@ -901,6 +907,7 @@ export class OrigSim {
     if (this.winner) return;
     for (const c of cmds1) this.apply(1, c);
     for (const c of cmds2) this.apply(2, c);
+    if (this.bot) for (const c of this.bot.think(this)) this.apply(2, c);
     this.frame++;
 
     // base_player / base_comp: loss check, AI, turrets

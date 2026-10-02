@@ -3,11 +3,13 @@ import type { Msg, Transport } from './transport';
 export type Relay = 'nostr' | 'torrent' | 'mqtt';
 const APP_ID = 'age-of-war-p2p.basil-as.v1';
 
+/** a few independent providers (Chrome warns above ~5): if one is blocked/slow the others still answer */
 export const STUN = [
-  'stun:stun.l.google.com:19302',
   'stun:stun.cloudflare.com:3478',
+  'stun:stun.l.google.com:19302',
   'stun:stun.nextcloud.com:443',
-  'stun:global.stun.twilio.com:3478',
+  'stun:stun.sipgate.net:3478',
+  'stun:stun.services.mozilla.com:3478',
 ];
 
 export interface TurnServer {
@@ -16,8 +18,18 @@ export interface TurnServer {
   credential: string;
 }
 
-/** Free public TURN (best effort — rate limited, can disappear). Override with `?turn=url|user|pass`. */
+/**
+ * Your own TURN (see deploy/): build with VITE_TURN="turn:host:3478?transport=udp,turns:host:443?transport=tcp|user|pass".
+ * Tried first; the free public relay below is only a best-effort fallback (rate limited, can disappear).
+ */
+function envTurn(): TurnServer[] {
+  const v = (import.meta.env?.VITE_TURN as string | undefined) ?? '';
+  if (!v) return [];
+  const [urls, username, credential] = v.split('|');
+  return [{ urls: (urls as string).split(','), username: username ?? '', credential: credential ?? '' }];
+}
 export const PUBLIC_TURN: TurnServer[] = [
+  ...envTurn(),
   {
     urls: [
       'turn:openrelay.metered.ca:80',

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { app, tr } from '../lib/app.svelte';
   import { VIA_NAMES } from '../lib/i18n';
-  const viaKind = (v: string) => (v === 'turn' ? 'turn' : v === 'local' ? 'local' : v.startsWith('relay') ? 'relay' : 'direct');
+  const viaKind = (v: string) => (v === 'turn' ? 'turn' : v === 'local' ? 'local' : v === 'lan' ? 'lan' : v.startsWith('relay') ? 'relay' : 'direct');
 </script>
 
 {#if app.phase === 'game' && app.net.online}

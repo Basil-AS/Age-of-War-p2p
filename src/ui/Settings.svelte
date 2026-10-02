@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app, closeOverlay, setCompat, setLang, setMusicOn, setMusicVol, setSfx, tr } from '../lib/app.svelte';
+  import { app, closeOverlay, setCompat, setLang, setMusicOn, setMusicVol, setSfx, setSmartAi, tr } from '../lib/app.svelte';
   const goFull = () => document.documentElement.requestFullscreen?.().catch(() => {});
 </script>
 
@@ -11,6 +11,8 @@
     <label class="flex items-center gap-3"><span class="font-semibold w-20">{tr('volume')}</span><input type="range" min="0" max="1" step="0.05" class="flex-1 accent-amber-400" value={app.sfx} oninput={(e) => setSfx(Number(e.currentTarget.value))} /></label>
     <label class="flex items-center gap-3"><span class="font-semibold w-20">{tr('music')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.musicOn} onchange={(e) => setMusicOn(e.currentTarget.checked)} />
       <input type="range" min="0" max="1" step="0.05" class="flex-1 accent-amber-400" value={app.music} oninput={(e) => setMusicVol(Number(e.currentTarget.value))} /></label>
+    <div class="flex items-center justify-between gap-2"><span class="font-semibold">{tr('aiMode')}</span>
+      <select class="btn text-sm" value={app.smartAi ? '1' : '0'} onchange={(e) => setSmartAi(e.currentTarget.value === '1')}><option value="1">{tr('aiSmart')}</option><option value="0">{tr('aiClassic')}</option></select></div>
     <div>
       <label class="flex items-center justify-between"><span class="font-semibold">{tr('compat')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.compat} onchange={(e) => setCompat(e.currentTarget.checked)} /></label>
       <p class="text-xs text-slate-400 mt-1">{tr('compatHint')}</p>

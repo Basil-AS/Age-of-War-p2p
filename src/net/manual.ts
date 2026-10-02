@@ -1,8 +1,8 @@
 import type { Msg, Transport } from './transport';
 
-const ICE = [
-  { urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478', 'stun:stun.nextcloud.com:443'] },
-];
+import { STUN } from './trystero';
+
+const ICE = [{ urls: STUN }];
 
 async function pack(obj: unknown): Promise<string> {
   const bytes = new TextEncoder().encode(JSON.stringify(obj));
@@ -42,8 +42,9 @@ export class ManualPeer {
   private pc: RTCPeerConnection;
   private dc: RTCDataChannel | null = null;
 
-  constructor() {
-    this.pc = new RTCPeerConnection({ iceServers: ICE });
+  /** lan: same-network play — no STUN, host candidates only, so it works with no internet at all */
+  constructor(lan = false) {
+    this.pc = new RTCPeerConnection({ iceServers: lan ? [] : ICE });
     const t: Transport & { kind: 'direct' } = {
       kind: 'direct',
       connected: false,

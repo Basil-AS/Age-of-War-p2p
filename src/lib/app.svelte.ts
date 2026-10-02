@@ -34,6 +34,7 @@ export const app = $state({
   music: Number(read('aow.musicv', '0.35')),
   musicOn: read('aow.music', '1') === '1',
   compat: read('aow.compat', '0') === '1',
+  smartAi: read('aow.smartai', '1') === '1',
   speed: 1,
   lobby: {
     role: 'host' as 'host' | 'guest',
@@ -105,6 +106,10 @@ export function setCompat(on: boolean) {
   app.compat = on;
   write('aow.compat', on ? '1' : '0');
 }
+export function setSmartAi(on: boolean) {
+  app.smartAi = on;
+  write('aow.smartai', on ? '1' : '0');
+}
 export function myName() {
   return app.name.trim() || (app.lang === 'ru' ? 'Игрок' : 'Player');
 }
@@ -139,6 +144,8 @@ export async function boot(canvas: HTMLCanvasElement) {
         return orig;
       },
       app,
+      hostRoom,
+      joinRoom,
       toPage: (x: number, y: number) => orig?.toPage(x, y),
     };
     window.addEventListener('hashchange', checkLink);
@@ -185,7 +192,7 @@ export function startSolo(diff: 1 | 2 | 3 = 1) {
   disposeTransport();
   const data = orig?.assets.data;
   if (!data) return;
-  const m = new SoloMatch(data, (Math.random() * 2 ** 32) >>> 0, { ai: true, diff });
+  const m = new SoloMatch(data, (Math.random() * 2 ** 32) >>> 0, { ai: !app.smartAi, bot: app.smartAi, diff });
   m.speed = app.speed;
   app.peerName = '';
   attach(m);
