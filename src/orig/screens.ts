@@ -43,8 +43,8 @@ function patchTitle(assets: OrigAssets) {
 export class Screens extends Container {
   private clip: Clip;
   constructor(
-    private flash: Flash,
-    private assets: OrigAssets,
+    flash: Flash,
+    assets: OrigAssets,
     private h: ScreenHandlers,
     frame: number | string = 'menuframe',
   ) {

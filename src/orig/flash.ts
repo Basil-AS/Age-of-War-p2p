@@ -68,7 +68,7 @@ function applyCx(o: Container, cx?: { mult: number[]; add: number[] }) {
   }
 }
 
-const rgb = (c: number[] | undefined, a = 1) => ((c?.[0] ?? 0) << 16) | ((c?.[1] ?? 0) << 8) | (c?.[2] ?? 0);
+const rgb = (c: number[] | undefined) => ((c?.[0] ?? 0) << 16) | ((c?.[1] ?? 0) << 8) | (c?.[2] ?? 0);
 
 const glyphCtx = new Map<string, GraphicsContext>();
 /** draws text from the font outlines embedded in the SWF — pixel-for-pixel the glyph shapes the original used */

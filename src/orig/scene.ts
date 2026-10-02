@@ -166,7 +166,6 @@ export class GameScene extends Container {
   private unitsC = new Container();
   private partC: Particles;
   private fxC = new Container();
-  private textC = new Container();
   private units = new Map<number, UnitView>();
   private turrets = new Map<TurretInst, TurretView>();
   private bullets = new Map<Bullet, Sprite>();

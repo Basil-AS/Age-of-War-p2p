@@ -61,13 +61,12 @@ export class Hud extends Container {
   private desc!: TextField;
   private bdesc!: TextField;
   private mt!: TextField;
-  private mtShadow!: TextField;
   private baseButtons: { build: (Button | null)[]; sell: (Button | null)[] } = { build: [], sell: [] };
   onModeChange: (() => void) | null = null;
 
   constructor(
-    private flash: Flash,
-    private assets: OrigAssets,
+    flash: Flash,
+    assets: OrigAssets,
     private sim: OrigSim,
     private side: Side,
     private send: (c: Cmd) => void,
@@ -82,7 +81,6 @@ export class Hud extends Container {
     this.desc = this.clip.named.desc as TextField;
     this.bdesc = this.clip.named.bdesc as TextField;
     this.mt = this.clip.named.mt as TextField;
-    this.mtShadow = this.fields.find((f) => f.variable === 'menu_text') as TextField;
     this.setView('main');
     this.update();
   }

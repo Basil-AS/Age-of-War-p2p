@@ -76,10 +76,9 @@ describe('lockstep status', () => {
     expect(a.status.desync || b.status.desync).toBe(true);
   });
   it('stalls (waits) instead of running ahead when the peer goes silent', () => {
-    const { a, ta, tb, tick } = pair(10);
+    const { a, tb, tick } = pair(10);
     tick(3000);
     tb.send = () => {}; // peer stops talking
-    ta.send = ta.send;
     tick(4000);
     const f = a.sim.frame;
     tick(2000);

@@ -20,6 +20,8 @@ interface Manifest {
   frames: Record<string, FrameInfo>;
 }
 
+const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
+
 export type Quality = 'hd' | 'sd';
 
 /** hd = 3× art (≈7 MB per era, big GPU textures), sd = 2×. Auto: sd on phones/low-memory devices; `?q=hd|sd` or localStorage overrides. */
@@ -49,8 +51,16 @@ export class OrigAssets {
     readonly quality: Quality = pickQuality(),
   ) {}
 
+  /** every asset URL carries the build id: the service worker can cache-first them and a new deploy still gets fresh files */
+  private url(path: string) {
+    return `${this.base}${path}?v=${BUILD}`;
+  }
+  private atlasUrl(i: number) {
+    return this.url(`${this.quality}/${(this.manifest.atlases[i] as { file: string }).file}`);
+  }
+
   async init(): Promise<void> {
-    const get = async <T>(f: string) => (await fetch(this.base + f)).json() as Promise<T>;
+    const get = async <T>(f: string) => (await fetch(this.url(f))).json() as Promise<T>;
     [this.data, this.ui, this.manifest, this.fonts] = await Promise.all([
       get<OrigData>('data.json'),
       get<UiData>('ui.json'),
@@ -75,7 +85,7 @@ export class OrigAssets {
     let p = this.atlasTex.get(i);
     if (!p) {
       p = Assets.load<Texture>({
-        src: `${this.base}${this.quality}/${(this.manifest.atlases[i] as { file: string }).file}`,
+        src: this.atlasUrl(i),
         data: { scaleMode: 'linear' },
       });
       this.atlasTex.set(i, p);
@@ -104,9 +114,7 @@ export class OrigAssets {
     return { tex: t, ox: f.ox, oy: f.oy };
   }
   private atlasTexSync(i: number): Texture | null {
-    return (
-      Assets.get<Texture>(`${this.base}${this.quality}/${(this.manifest.atlases[i] as { file: string }).file}`) ?? null
-    );
+    return Assets.get<Texture>(this.atlasUrl(i)) ?? null;
   }
   has(key: string) {
     return key in this.manifest.frames;
@@ -122,7 +130,7 @@ export class OrigAssets {
   }
   snd(id: number): string | null {
     const f = this.data.sounds[String(id)];
-    return f ? `${this.base}snd/${f}` : null;
+    return f ? this.url(`snd/${f}`) : null;
   }
 }
 

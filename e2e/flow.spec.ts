@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { startSolo } from './util';
 
 test.afterEach(async ({ browser }) => {
   for (const c of browser.contexts()) await c.close();
@@ -20,20 +21,6 @@ type W = {
 };
 const ready = (p: Page) =>
   p.waitForFunction(() => (window as unknown as W).__aow?.app.phase === 'title', null, { timeout: 90_000 });
-const click = async (page: Page, x: number, y: number) => {
-  const p = await page.evaluate(([a, b]) => (window as unknown as W).__aow.toPage(a as number, b as number), [x, y]);
-  await page.mouse.click(p.x, p.y);
-};
-async function startSolo(page: Page) {
-  await page.goto('/original.html');
-  await ready(page);
-  await page.waitForTimeout(1000);
-  await click(page, 325, 218);
-  await page.waitForTimeout(800);
-  await click(page, 325, 172);
-  await page.waitForFunction(() => (window as unknown as W).__aow.app.phase === 'game');
-}
-
 test('solo: destroying the enemy base shows the victory flow and the title is reachable again', async ({ page }) => {
   const errs: string[] = [];
   page.on('pageerror', (e) => errs.push(String(e)));

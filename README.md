@@ -5,7 +5,11 @@ against a friend straight from the browser. Graphics, animations, sounds, UI and
 original ones, extracted from the game's SWF; the game logic is a deterministic TypeScript port of
 its ActionScript.
 
-**Play:** https://basil-as.github.io/Age-of-War-p2p/ — open it, pick *Play with a friend*, send the link.
+**Play:** https://basil-as.github.io/Age-of-War-p2p/ — pick a version, then *Play with a friend* and send the link.
+
+Two versions share one network layer and can be switched from any menu (⇄ button, also in the pause menu):
+- **Original** — faithful port of the Flash game (art, animations, sounds, UI, stats from the SWF), 3× hi-res art on desktop, 2× on phones.
+- **Всраатая (lite)** — my first from-scratch version with procedural art, instant load.
 
 ## Stack
 Vite 8 · TypeScript · PixiJS 8 (own mini Flash display-list engine) · Svelte 5 overlays · Tailwind 4 ·
@@ -47,8 +51,8 @@ evolves, buys slots, uses its special) or **Classic** (the original script that 
 ```
 npm ci
 npm run dev        # http://localhost:5173
-npm test           # sim + lockstep unit tests
-npm run e2e        # Playwright (visual, solo, PvP over BroadcastChannel and WS relay)
+npm test           # ~85 unit tests: rules, fuzz, determinism + golden hash, asset/data integrity, i18n, handshake, ladder, multipath, bot, perf budget
+npm run e2e        # Playwright: visuals, solo/win/lose flow, resize/phone, PvP (BroadcastChannel + WS relay), production build + service-worker cache
 ```
 
 See [`docs/COMPARISON.md`](docs/COMPARISON.md) for how this relates to other open-source clones and [`NOTICE.md`](NOTICE.md) for credits.

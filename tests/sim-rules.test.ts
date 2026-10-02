@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FPS } from '../src/orig/sim';
-import { data, lcg, mk, randomCmd, run } from './helpers';
+import { data, lcg, mk, randomCmd } from './helpers';
 
 describe('training tray', () => {
   it('charges the unit price and refuses when broke', () => {

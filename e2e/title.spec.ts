@@ -9,7 +9,6 @@ type Aow = {
   match: { sim: { frame: number; player(s: number): { cash: number; tray: number[] }; units: unknown[] } } | null;
   app: { phase: string };
 };
-const aow = (page: import('@playwright/test').Page, js: string) => page.evaluate(js);
 
 test('title → difficulty → solo game with the original UI', async ({ page }) => {
   const errs: string[] = [];

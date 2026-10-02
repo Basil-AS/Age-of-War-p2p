@@ -3,8 +3,8 @@
  * which would desync a lockstep match between e.g. Chrome and Safari. These use only + - * / (exactly
  * rounded by IEEE-754 everywhere), so every engine returns the identical double.
  */
-const PI = 3.141592653589793;
-const TWO_PI = 6.283185307179586;
+const PI = Math.PI;
+const TWO_PI = 2 * Math.PI;
 const HALF_PI = 1.5707963267948966;
 
 function reduce(x: number): number {

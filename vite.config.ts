@@ -3,8 +3,11 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
+const BUILD = process.env.GITHUB_SHA?.slice(0, 8) ?? Date.now().toString(36);
+
 export default defineConfig({
   base: './',
+  define: { __BUILD_ID__: JSON.stringify(BUILD) },
   plugins: [
     tailwindcss(),
     svelte(),
@@ -20,7 +23,23 @@ export default defineConfig({
         orientation: 'landscape',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg}'], navigateFallback: null },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg}'],
+        navigateFallback: null,
+        cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          {
+            // the original art/sound/data: big, versioned by ?v=<build>, so cache-first is safe and repeat visits are instant
+            urlPattern: ({ url }) => url.pathname.includes('/orig/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'orig-assets',
+              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
+      },
     }),
   ],
   build: {

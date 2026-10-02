@@ -18,7 +18,7 @@ interface Route {
 
 const PROBE_MS = 1000;
 const DEAD_MS = 4000;
-const LEAVE_GRACE_MS = 6000;
+const LEAVE_GRACE_MS = 15000; // ride out a Wi-Fi blip before declaring the friend gone
 const SEEN = 1024;
 
 /**
