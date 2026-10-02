@@ -8,7 +8,7 @@ its ActionScript.
 **Play:** https://basil-as.github.io/Age-of-War-p2p/ — pick a version, then *Play with a friend* and send the link.
 
 Two versions share one network layer and can be switched from any menu (⇄ button, also in the pause menu):
-- **Original** — faithful port of the Flash game (art, animations, sounds, UI, stats from the SWF), 3× hi-res art on desktop, 2× on phones.
+- **Original** — the Flash game rebuilt on a modern stack: the original art, animations, sounds, stats and rules, but a new responsive engine and interface — the battlefield fills any screen (phone, 16:9, ultra-wide), HUD and menus are HTML (Svelte), 3× hi-res art on desktop, 2× on phones.
 - **Всраатая (lite)** — my first from-scratch version with procedural art, instant load.
 
 ## Stack

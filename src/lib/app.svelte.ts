@@ -5,12 +5,39 @@ import { MultiTransport } from '../net/multi';
 import { guestHandshake, hostHandshake } from '../net/session';
 import { type Msg, makeRoomCode, normalizeCode, type Transport } from '../net/transport';
 import { OrigApp } from '../orig/app';
-import type { Side } from '../orig/types';
+import type { Cmd, Side } from '../orig/types';
 import { healOnce } from './heal';
 import { detectLang, type Key, type Lang, STRINGS } from './i18n';
 
 export type Phase = 'loading' | 'title' | 'game' | 'result';
-export type Overlay = 'none' | 'friend' | 'lobby' | 'menu' | 'settings';
+export type Overlay = 'none' | 'lobby' | 'menu';
+export type MenuView = 'home' | 'solo' | 'friend' | 'howto' | 'settings' | 'about';
+
+/** what the HTML HUD shows, refreshed ~10×/s from the simulation */
+export interface HudState {
+  me: Side;
+  tech: number;
+  cash: number;
+  xp: number;
+  evolveCost: number | null;
+  canEvolve: boolean;
+  hp: number;
+  hpMax: number;
+  eHp: number;
+  eHpMax: number;
+  eTech: number;
+  special: number;
+  specialReady: boolean;
+  units: { id: number; cost: number; ok: boolean }[];
+  turrets: { id: number; cost: number; ok: boolean }[];
+  slots: { spot: number; open: boolean; id: number }[];
+  addonCost: number | null;
+  canAddon: boolean;
+  tray: number[];
+  progress: number;
+  seconds: number;
+  winner: number;
+}
 
 const read = (k: string, d: string) => {
   try {
@@ -30,6 +57,11 @@ const write = (k: string, v: string) => {
 export const app = $state({
   phase: 'loading' as Phase,
   overlay: 'none' as Overlay,
+  menu: 'home' as MenuView,
+  paused: false,
+  hud: null as HudState | null,
+  /** HUD icons rendered from the original art: u<id> units, t<id> turrets */
+  icons: {} as Record<string, string>,
   lang: detectLang() as Lang,
   name: read('aow.name', ''),
   sfx: Number(read('aow.sfx', '0.6')),
@@ -121,16 +153,19 @@ export async function boot(canvas: HTMLCanvasElement) {
   try {
     orig = new OrigApp(
       {
-        multiplayer: () => {
-          app.overlay = 'friend';
-        },
-        play: (d) => startSolo(d),
         phase: (p, info) => {
           if (p === 'result' && info)
             app.result = { winner: (info.winner ?? 0) as 0 | 1 | 2, me: (info.me ?? 1) as Side, online: !!info.online };
           app.phase = p;
+          if (p === 'title') {
+            app.hud = null;
+            app.paused = false;
+          }
         },
         menu: () => toggleMenu(),
+        paused: (on) => {
+          app.paused = on;
+        },
       },
       `${import.meta.env.BASE_URL}orig/`,
     );
@@ -150,14 +185,111 @@ export async function boot(canvas: HTMLCanvasElement) {
       hostRoom,
       joinRoom,
       toPage: (x: number, y: number) => orig?.toPage(x, y),
+      startSolo,
+      act,
     };
     window.addEventListener('hashchange', checkLink);
-    poll = setInterval(refreshNet, 250);
+    poll = setInterval(() => {
+      refreshNet();
+      refreshHud();
+    }, 100);
     checkLink();
   } catch (e) {
     if (healOnce()) return;
     app.loadError = e instanceof Error ? e.message : String(e);
   }
+}
+
+function snapshotHud(m: Match): HudState {
+  const sim = m.sim;
+  const me = m.side;
+  const foe: Side = me === 1 ? 2 : 1;
+  const p = sim.player(me);
+  const q = sim.player(foe);
+  const d = sim.d;
+  const lo = (p.tech - 1) * 3 + 1;
+  const ids = p.tech === 5 ? [lo, lo + 1, lo + 2, 16] : [lo, lo + 1, lo + 2];
+  const base = sim.bases[me];
+  const fbase = sim.bases[foe];
+  const addonCost = p.addons < 3 ? ([1000, 3000, 7500][p.addons] as number) : null;
+  const evolveCost = p.tech < 5 ? (d.EV[p.tech - 1] as number) : null;
+  return {
+    me,
+    tech: p.tech,
+    cash: Math.floor(p.cash),
+    xp: Math.floor(p.xp),
+    evolveCost,
+    canEvolve: sim.can(me, { t: 'evolve' }),
+    hp: Math.max(0, Math.round(base.health)),
+    hpMax: (base as { maxHealth: number }).maxHealth,
+    eHp: Math.max(0, Math.round(fbase.health)),
+    eHpMax: (fbase as { maxHealth: number }).maxHealth,
+    eTech: q.tech,
+    special: Math.min(1, p.special / 2000),
+    specialReady: p.special >= 2000,
+    units: ids.map((id) => ({
+      id,
+      cost: (d.EN[id] as [string, number, number])[1],
+      ok: sim.can(me, { t: 'tray', id }),
+    })),
+    turrets: [lo, lo + 1, lo + 2].map((id) => ({
+      id,
+      cost: (d.TU[id] as [string, number, number])[1],
+      ok: p.cash >= (d.TU[id] as [string, number, number])[1],
+    })),
+    slots: [1, 2, 3, 4].map((spot) => ({ spot, open: spot <= p.addons + 1, id: p.spots[spot - 1] as number })),
+    addonCost,
+    canAddon: sim.can(me, { t: 'addon' }),
+    tray: [...p.tray],
+    progress: sim.trainingProgress(me),
+    seconds: Math.floor(sim.frame / 40),
+    winner: sim.winner,
+  };
+}
+
+let hudTick = 0;
+function refreshHud() {
+  if (!match || app.phase !== 'game') return;
+  const h = snapshotHud(match);
+  app.hud = h;
+  if (hudTick++ % 4 === 0) ensureIcons(h.tech, h.tech + 1 > 5 ? 5 : h.tech + 1);
+}
+
+/** send a command as the local player (ignored while paused) */
+export function act(c: Cmd) {
+  orig?.send(c);
+}
+
+/**
+ * Renders the HUD icons (units 'u<id>', turrets 't<id>') from the original art as soon as their atlas
+ * is on the GPU; called until every icon of the ages in play exists.
+ */
+function ensureIcons(...techs: number[]) {
+  const a = orig?.assets;
+  if (!a) return;
+  const data = a.data;
+  const want: [string, string | null][] = [];
+  for (const t of new Set(techs)) {
+    const lo = (t - 1) * 3 + 1;
+    for (const id of t === 5 ? [lo, lo + 1, lo + 2, 16] : [lo, lo + 1, lo + 2]) {
+      const c = (data.units[id] as { states: { idle: { id: number } } } | null)?.states.idle.id;
+      want.push([`u${id}`, c ? `s${c}.1` : null]);
+    }
+    for (const id of [lo, lo + 1, lo + 2]) {
+      const c = (data.turrets[id] as { clip: { id: number } } | null)?.clip.id;
+      want.push([`t${id}`, c ? `s${c}.1` : null]);
+    }
+  }
+  for (const [key, frame] of want) {
+    if (app.icons[key] || !frame) continue;
+    const url = a.frameDataUrl(frame);
+    if (url) app.icons[key] = url;
+  }
+}
+
+/** unit base stats from the original tables: [health, melee damage, ranged damage, …] */
+export function unitStats(id: number): number[] {
+  return (orig?.assets.data.ES[id] as number[] | undefined) ?? [];
 }
 
 function refreshNet() {
@@ -377,25 +509,28 @@ export function leave() {
   app.overlay = 'none';
   app.lobby.state = 'idle';
   history.replaceState(null, '', location.pathname + location.search);
+  app.menu = 'home';
   orig?.showTitle();
 }
 
 export function cancelLobby() {
   disposeTransport();
   app.lobby.state = 'idle';
-  app.overlay = 'friend';
+  app.overlay = 'none';
+  app.menu = 'friend';
   history.replaceState(null, '', location.pathname + location.search);
 }
 
 export function closeOverlay() {
   app.overlay = 'none';
 }
+export function setMenu(v: MenuView) {
+  app.menu = v;
+}
 export function toggleMenu() {
   if (app.phase !== 'game') return;
   app.overlay = app.overlay === 'menu' ? 'none' : 'menu';
-  if (!match?.online && orig) {
-    if ((app.overlay === 'menu') !== orig.paused) orig.togglePause();
-  }
+  if (!match?.online) orig?.setPaused(app.overlay === 'menu');
 }
 export function setSpeed(v: number) {
   app.speed = v;

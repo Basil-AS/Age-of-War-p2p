@@ -1,7 +1,6 @@
 import { Container, Graphics, Matrix, Rectangle, Sprite } from 'pixi.js';
 import type { OrigAssets } from './assets';
 import { Atomic, Button, Clip, type Flash, TextField, walk } from './flash';
-import { Hud } from './hud';
 import { Particles } from './particles';
 import { type Bullet, type Frag, GROUND, type OrigSim, type TurretInst, type Unit, WORLD_W } from './sim';
 import type { OrigAudio } from './snd';
@@ -25,6 +24,8 @@ const BULLET_SPRITE: Record<string, number> = {
   s4: 892,
   s5: 890,
 };
+/** the camera may go a bit past the world edges so the whole base art is visible */
+const EDGE_PAD = 56;
 const DEG = Math.PI / 180;
 const M = (m: { a: number; b: number; c: number; d: number; tx: number; ty: number }) =>
   new Matrix(m.a, m.b, m.c, m.d, m.tx, m.ty);
@@ -173,14 +174,13 @@ export class GameScene extends Container {
   private specialSprites = new Map<unknown, Container>();
   private baseOwn: Clip;
   private baseEnemy: Clip;
-  hud: Hud;
+  /** width of the visible window in world pixels (650 in the original; wider on widescreen displays) */
+  viewW = 650;
   scroll = 0;
   private shake = 0;
-  private mx = -1;
-  private my = -1;
-  private dragging: { x: number; scroll: number } | null = null;
-  private ghost = new Container();
-  private ghostImg = new Sprite();
+  /** pointer position in world-view coordinates (set by the app), -1 = outside */
+  mx = -1;
+  my = -1;
   private hitText: TextField[] = [];
 
   constructor(o: SceneOpts) {
@@ -200,7 +200,10 @@ export class GameScene extends Container {
     this.mirror.addChild(this.world);
     this.partC = new Particles(o.assets, o.flash, mirrored);
     const bg = new Atomic(o.flash, 50, 1);
-    this.world.addChild(bg);
+    // widescreen: the painted backdrop is mirrored to the left so any window width stays filled
+    const bgL = new Atomic(o.flash, 50, 1);
+    bgL.scale.x = -1;
+    this.world.addChild(bgL, bg);
     // bases: my own base always uses the player sprite (it carries the build/sell buttons)
     const own = new Clip(o.flash, o.assets.ui.rootIds.basePlayer);
     const enemy = new Clip(o.flash, o.assets.ui.rootIds.baseComp);
@@ -217,76 +220,53 @@ export class GameScene extends Container {
     this.world.addChild(own, enemy, this.turretsC, this.bulletsC, this.unitsC, this.partC, this.fxC);
     this.unitsC.sortableChildren = true;
     this.cam.addChild(this.partC.overlay); // popups stay un-mirrored; Particles maps their x themselves
-    this.hud = new Hud(o.flash, o.assets, o.sim, o.me, o.send);
-    this.hud.bindBase(own);
-    this.addChild(this.hud);
-    // collect base number fields and un-mirror them
+    // the base sprite carries the original build/sell buttons — the new HTML HUD replaces them
     for (const b of [own, enemy])
       walk(b, (c) => {
-        if (c instanceof TextField && c.variable === 'h') this.hitText.push(c);
+        if (c instanceof Button) c.visible = false;
       });
-    this.ghost.addChild(this.ghostImg);
-    this.ghost.visible = false;
-    this.addChild(this.ghost);
-    this.eventMode = 'static';
-    this.hitArea = new Rectangle(0, 0, 650, 450);
-    this.on('pointermove', (e) => {
-      const p = this.toLocal(e.global);
-      this.mx = p.x;
-      this.my = p.y;
-      this.dragMove(e.pointerType, p.x, p.y);
-    });
-    this.on('pointerdown', (e) => {
-      if (e.pointerType !== 'mouse') {
-        const p = this.toLocal(e.global);
-        this.dragging = { x: p.x, scroll: this.scroll };
-      }
-    });
-    this.on('pointerup', () => {
-      this.dragging = null;
-    });
-    this.on('pointerupoutside', () => {
-      this.dragging = null;
-    });
-    this.on('pointerleave', () => {
-      this.mx = this.my = -1;
-    });
-    this.setScroll(0);
+    // the original in-world base health bar/number is replaced by the HTML HUD bars
+    for (const b of [own, enemy])
+      walk(b, (c) => {
+        if (c instanceof TextField && c.variable === 'h') {
+          c.visible = false;
+          this.hitText.push(c);
+        }
+      });
+    for (const b of [own, enemy]) {
+      // keep only the base artwork (+ its extension slots); drop the original health-bar frame and build buttons
+      const keep = new Set<unknown>([b.named.base, b.named.bu, b.named.e1, b.named.e2, b.named.e3]);
+      for (const c of b.children) if (!keep.has(c)) c.visible = false;
+    }
+    this.eventMode = 'passive';
+    this.setScroll(EDGE_PAD);
     this.tick();
   }
 
-  private dragMove(type: string, x: number, _y: number) {
-    if (type !== 'mouse' && this.dragging) this.setScroll(this.dragging.scroll + (x - this.dragging.x));
+  setViewW(w: number) {
+    this.viewW = w;
+    this.setScroll(this.scroll);
   }
+  /** scroll limits: the whole 1000 px world is visible on very wide screens, so it is simply centred */
   setScroll(v: number) {
-    this.scroll = Math.max(-350, Math.min(0, v));
+    if (this.viewW >= WORLD_W) this.scroll = (this.viewW - WORLD_W) / 2;
+    else this.scroll = Math.max(this.viewW - WORLD_W - EDGE_PAD, Math.min(EDGE_PAD, v));
   }
   nudge(dx: number) {
     this.setScroll(this.scroll + dx);
   }
 
-  /** per rendered frame: camera edge-scroll like the original (mouse at the screen edges, below the HUD) */
+  /** per rendered frame: camera edge-scroll (mouse near the left/right edge), screen shake */
   update(dtMs: number) {
     const k = dtMs / 25; // original: per 40 fps frame
-    if (this.my > 120 && this.mx >= 0) {
-      if (this.mx > 550) this.setScroll(this.scroll - ((this.mx - 550) / 10) * k);
-      if (this.mx < 100) this.setScroll(this.scroll + ((100 - this.mx) / 10) * k);
+    const edge = Math.min(110, this.viewW * 0.14);
+    if (this.mx >= 0 && this.my > 90 && this.my < 450 && this.viewW < WORLD_W) {
+      if (this.mx > this.viewW - edge) this.setScroll(this.scroll - ((this.mx - (this.viewW - edge)) / 10) * k);
+      if (this.mx < edge) this.setScroll(this.scroll + ((edge - this.mx) / 10) * k);
     }
     this.shake = Math.max(0, this.shake - 0.4 * k);
     this.cam.x = this.scroll + (this.shake ? (Math.random() - 0.5) * this.shake : 0);
     this.cam.y = this.shake ? (Math.random() - 0.5) * this.shake : 0;
-    // turret placement ghost follows the pointer
-    if (this.hud.mod === 2 && this.mx >= 0) {
-      const t = this.sim.d.turrets[this.hud.cursorTurret];
-      const fr = t ? this.assets.frame(`s${t.clip.id}.1`) : null;
-      if (fr) {
-        this.ghostImg.texture = fr.tex;
-        this.ghostImg.position.set(fr.ox, fr.oy);
-      }
-      this.ghost.position.set(this.mx, this.my);
-      this.ghost.alpha = 0.8;
-      this.ghost.visible = !!fr;
-    } else this.ghost.visible = false;
   }
 
   /** once per simulation tick (40 Hz) */
@@ -444,8 +424,6 @@ export class GameScene extends Container {
         this.specialSprites.delete(k);
       }
 
-    this.hud.update();
-    this.hud.clip.tick();
     this.baseOwn.tick();
     this.baseEnemy.tick();
   }

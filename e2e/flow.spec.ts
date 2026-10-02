@@ -46,37 +46,6 @@ test('solo: losing shows the defeat flow', async ({ page }) => {
   await page.screenshot({ path: '/tmp/shots/flow-defeat.png' });
 });
 
-test('the stage stays letterboxed and fills the window across resizes', async ({ page }) => {
-  const errs: string[] = [];
-  page.on('pageerror', (e) => errs.push(String(e)));
-  await page.goto('/original.html');
-  await ready(page);
-  for (const [w, h] of [
-    [1920, 1080],
-    [800, 600],
-    [640, 360],
-    [2560, 1080],
-    [1024, 768],
-  ] as const) {
-    await page.setViewportSize({ width: w, height: h });
-    await expect
-      .poll(async () => Math.round((await page.locator('#stage').boundingBox())?.width ?? 0), { timeout: 15_000 })
-      .toBe(w);
-    const box = await page.locator('#stage').boundingBox();
-    expect(Math.round(box?.height ?? 0)).toBe(h);
-    await page.waitForTimeout(300);
-    // the 650×450 stage is centred and never cropped
-    const a = await page.evaluate(() => (window as unknown as W).__aow.toPage(0, 0));
-    const b = await page.evaluate(() => (window as unknown as W).__aow.toPage(650, 450));
-    expect(a.x).toBeGreaterThanOrEqual(-1);
-    expect(a.y).toBeGreaterThanOrEqual(-1);
-    expect(b.x).toBeLessThanOrEqual(w + 1);
-    expect(b.y).toBeLessThanOrEqual(h + 1);
-    expect(Math.abs(a.x + (b.x - a.x) / 2 - w / 2)).toBeLessThan(2);
-  }
-  expect(errs).toEqual([]);
-});
-
 test.describe('phone', () => {
   test.use({ isMobile: true, hasTouch: true, deviceScaleFactor: 2.6, viewport: { width: 915, height: 412 } });
   test('uses the light (sd) art and fits the landscape screen', async ({ page }) => {
@@ -134,9 +103,7 @@ test('network check panel: probes run, a verdict and a copyable report appear', 
   await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   await page.goto('/original.html');
   await page.waitForFunction(() => (window as unknown as W).__aow?.app.phase === 'title', null, { timeout: 90_000 });
-  await page.evaluate(() => {
-    (window as unknown as { __aow: { app: { overlay: string } } }).__aow.app.overlay = 'friend';
-  });
+  await page.getByTestId('menu-friend').click();
   await page.getByTestId('netcheck-run').click();
   await expect(page.getByTestId('netcheck-results')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /📋/ })).toBeVisible({ timeout: 20_000 });

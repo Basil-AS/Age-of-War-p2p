@@ -1,0 +1,82 @@
+/* Age of War — modern UI skin: the original's wooden panels, gold lettering and cartoon outlines, rebuilt in CSS */
+:root {
+  --aw-wood-1: #b98040;
+  --aw-wood-2: #8c5b2b;
+  --aw-wood-3: #5d3b19;
+  --aw-line: #35210b;
+  --aw-gold: #ffd447;
+  --aw-gold-d: #d8991a;
+  --aw-cream: #fff3d2;
+  --aw-ink: #2b1a08;
+  --aw-red: #e4483b;
+  --aw-green: #54d261;
+  --aw-blue: #3fb1ff;
+  --aw-display: 'Georgia', 'Palatino Linotype', 'Book Antiqua', serif;
+  --aw-font: 'Trebuchet MS', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --aw-bar-h: clamp(84px, 15.5vh, 136px);
+}
+
+.aw-ui, .aw-ui * { box-sizing: border-box; font-family: var(--aw-font); }
+.aw-ui { color: var(--aw-cream); -webkit-font-smoothing: antialiased; }
+
+.aw-panel {
+  background: linear-gradient(180deg, var(--aw-wood-1), var(--aw-wood-2) 55%, var(--aw-wood-3));
+  border: 2px solid var(--aw-line);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 #2a1807, 0 12px 28px rgb(0 0 0 / 0.38), inset 0 2px 0 rgb(255 255 255 / 0.22), inset 0 -2px 0 rgb(0 0 0 / 0.2);
+  color: var(--aw-cream);
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.5);
+}
+.aw-glass {
+  background: rgb(30 18 6 / 0.62);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 220 150 / 0.22);
+  border-radius: 14px;
+  color: var(--aw-cream);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.aw-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+  min-height: 44px; padding: 0.6rem 1.2rem;
+  border-radius: 12px; border: 2px solid var(--aw-line);
+  background: linear-gradient(180deg, #ffe27a, var(--aw-gold) 45%, var(--aw-gold-d));
+  color: var(--aw-ink); font-weight: 800; font-size: 1rem; letter-spacing: 0.02em;
+  box-shadow: 0 4px 0 #7a4b08, 0 8px 18px rgb(0 0 0 / 0.3), inset 0 2px 0 rgb(255 255 255 / 0.55);
+  cursor: pointer; transition: transform 0.08s, filter 0.15s, box-shadow 0.08s; text-shadow: 0 1px 0 rgb(255 255 255 / 0.4);
+}
+.aw-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.aw-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #7a4b08, inset 0 2px 0 rgb(255 255 255 / 0.4); }
+.aw-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.4); }
+.aw-btn.wood {
+  background: linear-gradient(180deg, #c89158, #9a6732 55%, #6d4521); color: var(--aw-cream);
+  box-shadow: 0 4px 0 #2a1807, 0 8px 18px rgb(0 0 0 / 0.3), inset 0 2px 0 rgb(255 255 255 / 0.25); text-shadow: 0 1px 0 rgb(0 0 0 / 0.55);
+}
+.aw-btn.wood:active:not(:disabled) { box-shadow: 0 1px 0 #2a1807; }
+.aw-btn.big { min-height: 56px; font-size: 1.2rem; border-radius: 14px; }
+.aw-btn.small { min-height: 36px; padding: 0.35rem 0.8rem; font-size: 0.85rem; border-radius: 10px; }
+.aw-chip {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0.3rem 0.9rem;
+  border-radius: 999px; border: 2px solid var(--aw-line); background: rgb(0 0 0 / 0.28); color: var(--aw-cream);
+  font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.08s;
+}
+.aw-chip:hover { background: rgb(0 0 0 / 0.4); }
+.aw-chip.on { background: var(--aw-gold); color: var(--aw-ink); text-shadow: none; }
+.aw-input {
+  width: 100%; min-height: 44px; border-radius: 12px; padding: 0.55rem 0.9rem; border: 2px solid var(--aw-line);
+  background: rgb(255 243 210 / 0.95); color: var(--aw-ink); font-weight: 700; font-size: 1rem; outline: none; user-select: text;
+}
+.aw-input:focus { border-color: var(--aw-gold-d); box-shadow: 0 0 0 3px rgb(255 212 71 / 0.4); }
+.aw-title {
+  font-family: var(--aw-display); font-weight: 900; letter-spacing: 0.06em; line-height: 0.95;
+  background: linear-gradient(180deg, #fff6a8 0%, #ffd447 45%, #c98b0a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 2px #4a2d05; paint-order: stroke fill;
+  filter: drop-shadow(0 4px 0 #4a2d05) drop-shadow(0 10px 18px rgb(0 0 0 / 0.5));
+}
+.aw-range { accent-color: var(--aw-gold); width: 100%; }
+.aw-sep { display: flex; align-items: center; gap: 0.6rem; font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.08em; }
+.aw-sep::before, .aw-sep::after { content: ''; flex: 1; height: 2px; background: rgb(0 0 0 / 0.25); border-radius: 2px; }
+.aw-coin { display: inline-block; width: 1.1em; height: 1.1em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6a8, #ffd447 45%, #b57a08); border: 2px solid #5a3a05; vertical-align: -0.2em; }
+
+@media (prefers-reduced-motion: reduce) { .aw-ui * { transition: none !important; animation: none !important; } }

@@ -1,44 +1,54 @@
-import { Application, Container, Graphics, Rectangle } from 'pixi.js';
+import { Application, Container, Graphics } from 'pixi.js';
 import { startKeepAlive } from '../lib/keepalive';
 import type { Match } from '../net/match';
 import { OrigAssets } from './assets';
-import { Clip, Flash } from './flash';
+import { Flash } from './flash';
+import { MenuScene } from './menuscene';
 import { GameScene } from './scene';
-import { Screens } from './screens';
 import { OrigAudio } from './snd';
 import type { Cmd, Side } from './types';
 
 export interface OrigHooks {
-  /** "Play with a friend" pressed on the title screen */
-  multiplayer(): void;
-  /** a difficulty was chosen on the original screen → start a solo match */
-  play(diff: 1 | 2 | 3): void;
   /** the HTML shell wants to know when a game starts/ends so it can show its own overlays */
   phase(p: 'title' | 'game' | 'result', info?: { winner?: 0 | Side; me?: Side; online?: boolean }): void;
-  /** Escape / menu button */
+  /** Escape pressed */
   menu(): void;
+  /** the game paused/resumed on its own (tab hidden, Space) */
+  paused(on: boolean): void;
 }
 
+/** the original stage: 450 px tall, 650 px wide at the narrowest */
 const W = 650,
   H = 450;
+const MAX_VIEW_W = 2000;
+const SKY = 0x3fb1ff;
+const DIRT = 0x6b4a26;
 
-/** Owns the Pixi canvas: the original screens, the in-game scene and the glue to a running Match. */
+/**
+ * Owns the Pixi canvas: the menu backdrop, the in-game world and the glue to a running Match. The HUD
+ * and all menus are HTML (Svelte) on top. The world keeps the original 450 px height and simply shows
+ * more of it on wide screens (the visible width is whatever fits), instead of a small 4:3 box.
+ */
 export class OrigApp {
   readonly app = new Application();
   assets!: OrigAssets;
   flash!: Flash;
   audio!: OrigAudio;
   private root = new Container();
-  private screens: Screens | null = null;
+  private fill = new Graphics();
+  private menu: MenuScene | null = null;
   private scene: GameScene | null = null;
-  private pauseClip: Clip | null = null;
-  private frame = new Graphics();
   match: Match | null = null;
   paused = false;
   private resultShown = false;
   private loadingBuckets = new Set<number>();
   private keyHandler = (e: KeyboardEvent) => this.onKey(e);
   private fit = 1;
+  /** logical width of the visible world window (650 … 2000) */
+  viewW = W;
+  /** height in CSS px of the HTML control bar at the bottom: the world is laid out above it */
+  private bottomInset = 0;
+  private drag: { x: number; scroll: number; moved: boolean } | null = null;
   /** `?norender` — logic only (no drawing): lets tests measure netcode without a GPU, same path as a hidden tab */
   private noRender = new URLSearchParams(location.search).has('norender');
 
@@ -52,7 +62,7 @@ export class OrigApp {
       canvas,
       resizeTo: window,
       antialias: true,
-      background: 0x000000,
+      background: SKY,
       resolution: pickResolution(),
       autoDensity: true,
       preference: opts.webgpu ? 'webgpu' : 'webgl',
@@ -63,10 +73,7 @@ export class OrigApp {
     await this.flash.loadFonts();
     this.audio = new OrigAudio((id) => this.assets.snd(id));
     await this.assets.loadBucket('e1');
-    // the next era streams in once a match starts (prefetchEras), not before the title is up
-    this.app.stage.addChild(this.root);
-    this.app.stage.eventMode = 'static';
-    this.app.stage.hitArea = new Rectangle(-5000, -5000, 10000, 10000);
+    this.app.stage.addChild(this.fill, this.root);
     // Pixi resizes its screen from its own window listener; lay out after *its* resize event so we never use a stale size
     this.app.renderer.on('resize', () => this.layout());
     window.addEventListener('resize', () => {
@@ -75,9 +82,10 @@ export class OrigApp {
       this.layout();
     });
     window.addEventListener('keydown', this.keyHandler);
+    this.bindPointer(canvas);
     // a solo game pauses by itself when the tab/app is backgrounded (online games keep running — the friend is waiting)
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.match && !this.match.online && !this.paused) this.togglePause();
+      if (document.hidden && this.match && !this.match.online && !this.paused) this.setPaused(true);
     });
     this.layout();
     this.showTitle();
@@ -85,65 +93,121 @@ export class OrigApp {
     if (this.noRender) this.app.ticker.stop();
   }
 
-  /** logical 650x450 stage coordinates → page (CSS pixel) coordinates (used by tests and overlays) */
+  /** the HTML control bar tells us how much of the bottom of the window it covers */
+  setInsets(bottom: number) {
+    if (Math.abs(bottom - this.bottomInset) < 1) return;
+    this.bottomInset = bottom;
+    this.layout();
+  }
+
+  /** world coordinates (view space) → page (CSS pixel) coordinates; used by tests */
   toPage(x: number, y: number) {
     const r = this.app.canvas.getBoundingClientRect();
-    const k = this.fit * (this.app.screen.width / r.width ? r.width / this.app.screen.width : 1);
     return {
       x: r.left + (this.root.x + x * this.fit) * (r.width / this.app.screen.width),
       y: r.top + (this.root.y + y * this.fit) * (r.height / this.app.screen.height),
-      k,
+      k: this.fit,
     };
+  }
+
+  private toView(clientX: number, clientY: number) {
+    const r = this.app.canvas.getBoundingClientRect();
+    const sx = this.app.screen.width / r.width;
+    const sy = this.app.screen.height / r.height;
+    return {
+      x: ((clientX - r.left) * sx - this.root.x) / this.fit,
+      y: ((clientY - r.top) * sy - this.root.y) / this.fit,
+    };
+  }
+
+  private bindPointer(canvas: HTMLCanvasElement) {
+    window.addEventListener('pointermove', (e) => {
+      const p = this.toView(e.clientX, e.clientY);
+      if (this.scene) {
+        this.scene.mx = e.pointerType === 'mouse' ? p.x : -1;
+        this.scene.my = p.y;
+      }
+      if (this.drag && this.scene) {
+        const dx = p.x - this.drag.x;
+        if (Math.abs(dx) > 4) this.drag.moved = true;
+        this.scene.setScroll(this.drag.scroll + dx);
+      }
+    });
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!this.scene) return;
+      this.drag = { x: this.toView(e.clientX, e.clientY).x, scroll: this.scene.scroll, moved: false };
+    });
+    window.addEventListener('pointerup', () => {
+      this.drag = null;
+    });
+    document.addEventListener('pointerleave', () => {
+      if (this.scene) this.scene.mx = this.scene.my = -1;
+    });
+    canvas.addEventListener(
+      'wheel',
+      (e) => {
+        if (!this.scene) return;
+        e.preventDefault();
+        this.scene.nudge(-(e.deltaX || e.deltaY) / this.fit);
+      },
+      { passive: false },
+    );
   }
 
   private layout() {
     const w = this.app.screen.width,
       h = this.app.screen.height;
-    this.fit = Math.min(w / W, h / H);
-    this.root.scale.set(this.fit);
-    this.root.position.set((w - W * this.fit) / 2, (h - H * this.fit) / 2);
-    // crop anything that scrolls outside the 650x450 stage (the original's SWF stage clips the same way)
-    this.frame.clear();
+    const availH = Math.max(120, h - this.bottomInset);
+    let fit = availH / H;
+    let vw = w / fit;
+    if (vw < W) {
+      // narrow window (portrait): fit the width instead and centre vertically
+      fit = w / W;
+      vw = W;
+    }
+    vw = Math.min(vw, MAX_VIEW_W);
+    this.fit = fit;
+    this.viewW = vw;
+    this.root.scale.set(fit);
+    this.root.position.set((w - vw * fit) / 2, Math.max(0, (availH - H * fit) / 2));
+    // crop whatever scrolls outside the visible window
     this.root.mask = null;
-    const m = new Graphics().rect(0, 0, W, H).fill(0xffffff);
+    for (const c of this.root.children.filter((x) => x.label === 'mask')) c.destroy();
+    const m = new Graphics().rect(0, 0, vw, H).fill(0xffffff);
+    m.label = 'mask';
     this.root.addChild(m);
     this.root.mask = m;
+    // sky above / earth below the world when the window is taller than the stage
+    this.fill.clear();
+    const bottom = this.root.y + H * fit;
+    this.fill.rect(0, 0, w, h).fill(SKY);
+    this.fill.rect(0, bottom, w, Math.max(0, h - bottom)).fill(DIRT);
+    this.scene?.setViewW(vw);
+    this.menu?.setViewW(vw);
   }
 
   // ───────── lifecycle ─────────
   private clear() {
-    if (this.screens) {
-      this.screens.destroy({ children: true });
-      this.screens = null;
+    if (this.menu) {
+      this.menu.destroy({ children: true });
+      this.menu = null;
     }
     if (this.scene) {
       this.scene.destroyScene();
       this.scene = null;
     }
-    if (this.pauseClip) {
-      this.pauseClip.destroy({ children: true });
-      this.pauseClip = null;
-    }
     this.paused = false;
     this.resultShown = false;
   }
 
-  showTitle(frame: number | string = 'menuframe') {
+  showTitle() {
     this.clear();
     this.match?.destroy();
     this.match = null;
     this.audio.stopMusic();
-    this.screens = new Screens(
-      this.flash,
-      this.assets,
-      {
-        play: (d) => this.hooks.play(d),
-        multiplayer: () => this.hooks.multiplayer(),
-        open: (u) => window.open(u, '_blank', 'noopener'),
-      },
-      frame,
-    );
-    this.root.addChildAt(this.screens, 0);
+    this.menu = new MenuScene(this.flash, this.assets);
+    this.menu.setViewW(this.viewW);
+    this.root.addChildAt(this.menu, 0);
     this.hooks.phase('title');
   }
 
@@ -154,22 +218,21 @@ export class OrigApp {
     this.match = m;
     m.onTick = () => this.scene?.tick();
     const me = m.side;
-    const sim = m.sim;
     this.scene = new GameScene({
       assets: this.assets,
       flash: this.flash,
       audio: this.audio,
-      sim,
+      sim: m.sim,
       me,
       send: (c: Cmd) => this.send(c),
     });
+    this.scene.setViewW(this.viewW);
     this.root.addChildAt(this.scene, 0);
     this.prefetchEras();
     this.audio.startMusic();
     this.hooks.phase('game', { me, online: m.online });
   }
 
-  /** hand a *released* transport's match over (rematch) without recreating the Pixi objects twice */
   send(c: Cmd) {
     if (!this.paused) this.match?.command(c);
   }
@@ -192,7 +255,7 @@ export class OrigApp {
     });
     this.app.ticker.add((t) => {
       const now = performance.now();
-      this.screens?.tick();
+      this.menu?.update(t.deltaMS);
       if (this.match && this.scene) {
         if (!this.paused) this.match.update(now);
         this.scene.update(t.deltaMS);
@@ -208,64 +271,49 @@ export class OrigApp {
 
   private onResult(w: 1 | 2) {
     const m = this.match as Match;
-    const me = m.side;
     this.audio.stopMusic();
-    // show the original victory / defeat screen after a beat
     setTimeout(() => {
       if (this.match !== m) return;
-      const win = w === me;
-      if (this.scene) {
-        this.scene.visible = false;
-      }
-      this.screens = new Screens(
-        this.flash,
-        this.assets,
-        { play: () => {}, multiplayer: () => {}, open: (u) => window.open(u, '_blank', 'noopener') },
-        win ? 'win' : 'gameover',
-      );
-      this.root.addChild(this.screens);
-      this.hooks.phase('result', { winner: w, me, online: m.online });
-    }, 1200);
+      this.hooks.phase('result', { winner: w, me: m.side, online: m.online });
+    }, 1400);
   }
 
+  setPaused(on: boolean) {
+    if (!this.match || this.match.online || this.match.sim.winner || on === this.paused) return;
+    this.paused = on;
+    this.hooks.paused(on);
+  }
   togglePause() {
-    if (!this.match || this.match.online || this.match.sim.winner) return;
-    this.paused = !this.paused;
-    if (this.paused) {
-      const id = this.assets.ui.rootIds.pause;
-      this.pauseClip = new Clip(this.flash, id);
-      this.pauseClip.position.set(325, 225);
-      this.root.addChild(this.pauseClip);
-      if (this.scene) this.scene.hud.visible = false;
-    } else {
-      this.pauseClip?.destroy({ children: true });
-      this.pauseClip = null;
-      if (this.scene) this.scene.hud.visible = true;
-    }
+    this.setPaused(!this.paused);
+  }
+
+  /** first free turret slot (1…addons+1) or 0 */
+  private freeSpot(side: Side) {
+    const p = this.match?.sim.player(side);
+    if (!p) return 0;
+    for (let s = 1; s <= p.addons + 1; s++) if (p.spots[s - 1] === 0) return s;
+    return 0;
   }
 
   private onKey(e: KeyboardEvent) {
-    if (!this.scene || e.target instanceof HTMLInputElement) return;
+    if (!this.scene || e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
     const sim = this.match?.sim,
       me = this.match?.side;
     if (!sim || !me) return;
+    const p = sim.player(me);
     if (k === ' ') {
       e.preventDefault();
       this.togglePause();
-      return;
-    }
-    if (k === 'escape') {
-      this.hooks.menu();
-      return;
-    }
-    if (k === 'arrowleft' || k === 'a') this.scene.nudge(40);
-    else if (k === 'arrowright' || k === 'd') this.scene.nudge(-40);
-    else if (k >= '1' && k <= '4') {
-      const p = sim.player(me);
-      const id = k === '4' ? 16 : (p.tech - 1) * 3 + Number(k);
-      this.send({ t: 'tray', id });
-    } else if (k === 'q') this.send({ t: 'special' });
+    } else if (k === 'escape') this.hooks.menu();
+    else if (k === 'arrowleft' || k === 'a') this.scene.nudge(60);
+    else if (k === 'arrowright' || k === 'd') this.scene.nudge(-60);
+    else if (k >= '1' && k <= '4') this.send({ t: 'tray', id: k === '4' ? 16 : (p.tech - 1) * 3 + Number(k) });
+    else if (k === 'z' || k === 'x' || k === 'c') {
+      const spot = this.freeSpot(me);
+      if (spot) this.send({ t: 'turret', spot, id: (p.tech - 1) * 3 + 'zxc'.indexOf(k) + 1 });
+    } else if (k === 'f') this.send({ t: 'addon' });
+    else if (k === 'q') this.send({ t: 'special' });
     else if (k === 'e') this.send({ t: 'evolve' });
   }
 

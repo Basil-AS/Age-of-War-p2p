@@ -116,6 +116,23 @@ export class OrigAssets {
   private atlasTexSync(i: number): Texture | null {
     return Assets.get<Texture>(this.atlasUrl(i)) ?? null;
   }
+  /** a small PNG data-URL of one atlas frame (HTML icons); null until its atlas is on the GPU */
+  frameDataUrl(key: string, maxPx = 112): string | null {
+    const f = this.manifest.frames[key];
+    if (!f || f.a < 0) return null;
+    const res = (this.atlasTexSync(f.a)?.source as { resource?: CanvasImageSource } | undefined)?.resource;
+    if (!res) return null;
+    const k = Math.min(1, maxPx / Math.max(f.w, f.h));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(f.w * k));
+    c.height = Math.max(1, Math.round(f.h * k));
+    try {
+      c.getContext('2d')?.drawImage(res, f.x, f.y, f.w, f.h, 0, 0, c.width, c.height);
+      return c.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  }
   has(key: string) {
     return key in this.manifest.frames;
   }

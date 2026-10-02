@@ -32,18 +32,18 @@
 </script>
 
 <div class="flex flex-col gap-2">
-  <button class="btn btn-ghost text-sm" disabled={busy} onclick={run} data-testid="netcheck-run">{busy ? T.running : T.run}</button>
+  <button class="aw-btn wood small" disabled={busy} onclick={run} data-testid="netcheck-run">{busy ? T.running : T.run}</button>
   {#if results.length}
-    <div class="text-xs leading-tight max-h-40 overflow-auto glass rounded-xl p-2" data-testid="netcheck-results">
+    <div class="text-xs leading-tight max-h-40 overflow-auto aw-glass p-2" data-testid="netcheck-results">
       {#each results as r}
-        <div class="flex justify-between gap-2"><span class="truncate">{r.ok ? '✅' : '❌'} {r.kind} · {r.target}</span><span class="tabular-nums text-slate-400">{r.ok ? `${r.ms} ms` : r.detail ?? ''}</span></div>
+        <div class="flex justify-between gap-2"><span class="truncate">{r.ok ? '✅' : '❌'} {r.kind} · {r.target}</span><span class="tabular-nums opacity-70">{r.ok ? `${r.ms} ms` : r.detail ?? ''}</span></div>
       {/each}
     </div>
     {#if !busy}
-      <div class="text-sm font-semibold {verdict.directP2P === 'good' ? 'text-emerald-400' : verdict.directP2P === 'maybe' ? 'text-amber-300' : 'text-rose-400'}">
+      <div class="text-sm font-semibold {verdict.directP2P === 'good' ? 'text-emerald-300' : verdict.directP2P === 'maybe' ? 'text-amber-200' : 'text-rose-200'}">
         {verdict.directP2P === 'good' ? T.good : verdict.directP2P === 'maybe' ? T.maybe : T.unlikely} · {verdict.summary.join(' · ')}
       </div>
-      <button class="btn btn-ghost text-xs" onclick={copy}>{copied ? T.copied : T.copy}</button>
+      <button class="aw-btn wood small" onclick={copy}>{copied ? T.copied : T.copy}</button>
     {/if}
   {/if}
 </div>
