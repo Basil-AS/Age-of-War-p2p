@@ -115,6 +115,7 @@ export const getMatch = () => match;
 
 export function setLang(l: Lang) {
   app.lang = l;
+  document.documentElement.lang = l;
   write('aow.lang', l);
 }
 export function setName(n: string) {
@@ -174,6 +175,7 @@ export async function boot(canvas: HTMLCanvasElement) {
     orig.audio.setMusicVolume(app.music);
     orig.audio.setMusicOn(app.musicOn);
     app.phase = 'title';
+    document.documentElement.lang = app.lang;
     (window as unknown as { __aow: unknown }).__aow = {
       get match() {
         return match;

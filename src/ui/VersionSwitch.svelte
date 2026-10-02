@@ -1,7 +1,7 @@
 <script lang="ts">
   /** jump between the two versions (and the launcher) from anywhere */
-  let { current, block = false }: { current: 'original' | 'lite'; block?: boolean } = $props();
-  const ru = /^ru|^uk|^be|^kk/i.test(navigator.language || '');
+  let { current, block = false, lang = 'en' }: { current: 'original' | 'lite'; block?: boolean; lang?: 'ru' | 'en' } = $props();
+  const ru = $derived(lang === 'ru');
   const other = $derived(current === 'original' ? 'lite' : 'original');
   const label = $derived(other === 'original' ? (ru ? 'Оригинал' : 'Original') : ru ? 'Всраатая' : 'Vsraataya');
 </script>

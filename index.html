@@ -26,10 +26,15 @@
       .name { font-size: 1.5rem; font-weight: 900; }
       ul { margin: 4px 0 0; padding-left: 18px; font-size: .92rem; opacity: .92; }
       .go { margin-top: auto; padding-top: 10px; font-weight: 900; color: var(--gold); }
+      #lang button { border: 0; border-radius: 99px; padding: 5px 13px; font: 800 .85rem 'Trebuchet MS', system-ui, sans-serif; cursor: pointer; background: transparent; color: var(--cream); }
+      #lang button.on { background: var(--gold); color: #2b1a08; }
       footer { margin-top: 22px; color: #fff; font-size: .8rem; text-shadow: 0 1px 0 #0008; }
     </style>
   </head>
   <body>
+    <div id="lang" style="position:fixed;top:12px;right:12px;display:flex;gap:2px;background:#0004;border:2px solid #35210b;border-radius:99px;padding:2px">
+      <button data-l="ru">RU</button><button data-l="en">EN</button>
+    </div>
     <main>
       <h1>AGE OF WAR</h1>
       <p class="sub" id="sub"></p>
@@ -50,15 +55,27 @@
       <footer id="foot"></footer>
     </main>
     <script>
-      var ru = /^ru|^uk|^be|^kk/i.test(navigator.language || '');
-      var T = ru
-        ? { sub: 'Выбери версию. Онлайн 1 на 1 с другом есть в обеих.', t1: 'РЕКОМЕНДУЕМ', n1: 'Оригинал', l1: ['Точный порт оригинальной Flash-игры', 'Оригинальная графика, анимации, звуки, интерфейс', 'Умный бот и честная экономика (или классика)'], t2: 'ЛЁГКАЯ', n2: 'Всраатая', l2: ['Моя первая версия с нуля, без оригинальных ассетов', 'Грузится мгновенно, мало трафика', 'Удобна на слабых телефонах'], go: 'Играть →', foot: 'Ссылка-приглашение друга откроет нужную версию автоматически.' }
-        : { sub: 'Pick a version. 1v1 online with a friend works in both.', t1: 'RECOMMENDED', n1: 'Original', l1: ['Faithful port of the original Flash game', 'Original art, animations, sounds and UI', 'Smart bot with a fair economy (or classic)'], t2: 'LITE', n2: 'Vsraataya (the janky one)', l2: ['My first from-scratch version, no original assets', 'Instant load, tiny download', 'Easy on weak phones'], go: 'Play →', foot: 'A friend’s invite link opens the right version automatically.' };
+      var T = {
+        ru: { sub: 'Выбери версию. Онлайн 1 на 1 с другом есть в обеих.', t1: 'РЕКОМЕНДУЕМ', n1: 'Оригинал', l1: ['Оригинальная игра на современном движке', 'Оригинальные графика, анимации, звуки и правила', 'Поле боя на весь экран, новый интерфейс', 'Умный бот и честная экономика (или классика)'], t2: 'ЛЁГКАЯ', n2: 'Всраатая', l2: ['Моя первая версия с нуля, без оригинальных ассетов', 'Грузится мгновенно, мало трафика', 'Удобна на слабых телефонах'], go: 'Играть →', foot: 'Ссылка-приглашение друга откроет нужную версию автоматически.' },
+        en: { sub: 'Pick a version. 1v1 online with a friend works in both.', t1: 'RECOMMENDED', n1: 'Original', l1: ['The original game on a modern engine', 'Original art, animations, sounds and rules', 'Full-screen battlefield, brand-new interface', 'Smart bot with a fair economy (or classic)'], t2: 'LITE', n2: 'Vsraataya (the janky one)', l2: ['My first from-scratch version, no original assets', 'Instant load, tiny download', 'Easy on weak phones'], go: 'Play →', foot: 'A friend’s invite link opens the right version automatically.' }
+      };
+      function pick() {
+        try { var s = localStorage.getItem('aow.lang'); if (s === 'ru' || s === 'en') return s; } catch (e) {}
+        return /^ru/i.test((navigator.languages && navigator.languages[0]) || navigator.language || '') ? 'ru' : 'en';
+      }
       function set(id, v) { document.getElementById(id).textContent = v; }
-      function list(id, a) { document.getElementById(id).innerHTML = a.map(function (x) { return '<li></li>'; }).join(''); var li = document.getElementById(id).children; for (var i = 0; i < a.length; i++) li[i].textContent = a[i]; }
-      set('sub', T.sub); set('t1', T.t1); set('n1', T.n1); list('l1', T.l1); set('g1', T.go);
-      set('t2', T.t2); set('n2', T.n2); list('l2', T.l2); set('g2', T.go); set('foot', T.foot);
-      document.documentElement.lang = ru ? 'ru' : 'en';
+      function list(id, a) { var ul = document.getElementById(id); ul.innerHTML = ''; a.forEach(function (x) { var li = document.createElement('li'); li.textContent = x; ul.appendChild(li); }); }
+      function apply(l) {
+        var t = T[l];
+        set('sub', t.sub); set('t1', t.t1); set('n1', t.n1); list('l1', t.l1); set('g1', t.go);
+        set('t2', t.t2); set('n2', t.n2); list('l2', t.l2); set('g2', t.go); set('foot', t.foot);
+        document.documentElement.lang = l;
+        document.querySelectorAll('#lang button').forEach(function (b) { b.className = b.getAttribute('data-l') === l ? 'on' : ''; });
+      }
+      document.querySelectorAll('#lang button').forEach(function (b) {
+        b.addEventListener('click', function () { var l = b.getAttribute('data-l'); try { localStorage.setItem('aow.lang', l); } catch (e) {} apply(l); });
+      });
+      apply(pick());
       var h = location.hash || '';
       document.getElementById('orig').href = './original.html' + h;
       document.getElementById('lite').href = './lite.html' + h;

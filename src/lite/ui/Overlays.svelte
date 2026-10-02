@@ -46,7 +46,7 @@
       {/if}
       <button class="btn" onclick={() => document.documentElement.requestFullscreen?.().catch(() => {})}>⛶ {tr('fullscreen')}</button>
       <button class="btn btn-ghost" onclick={leave}>{tr('leave')}</button>
-      <VersionSwitch current="lite" block />
+      <VersionSwitch current="lite" block lang={app.lang} />
     </div>
   </div>
 {/if}

@@ -5,10 +5,11 @@
   // while the player is in the friend panel, find which signalling servers answer fastest from THIS network
   onMount(() => void rankRelays());
 
-  const ru = /^ru|^uk|^be|^kk/i.test(navigator.language || '');
-  const T = ru
+  let { lang = 'en' }: { lang?: 'ru' | 'en' } = $props();
+  const ru = $derived(lang === 'ru');
+  const T = $derived(ru
     ? { run: '🔍 Проверка сети', running: 'Проверяю…', copy: '📋 Копировать отчёт', copied: 'Скопировано', good: 'Прямое P2P должно работать', maybe: 'P2P возможен, но через ретранслятор', unlikely: 'Сигнальные серверы недоступны — используйте ручные коды или свой сервер' }
-    : { run: '🔍 Network check', running: 'Checking…', copy: '📋 Copy report', copied: 'Copied', good: 'Direct P2P should work', maybe: 'P2P possible, probably via a relay', unlikely: 'Signalling servers unreachable — use manual codes or your own server' };
+    : { run: '🔍 Network check', running: 'Checking…', copy: '📋 Copy report', copied: 'Copied', good: 'Direct P2P should work', maybe: 'P2P possible, probably via a relay', unlikely: 'Signalling servers unreachable — use manual codes or your own server' });
   let results = $state<CheckResult[]>([]);
   let busy = $state(false);
   let copied = $state(false);

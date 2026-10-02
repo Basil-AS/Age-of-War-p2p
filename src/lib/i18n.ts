@@ -414,5 +414,6 @@ export function detectLang(): Lang {
   } catch {
     /* storage blocked */
   }
-  return navigator.language?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  const pref = (navigator.languages?.[0] ?? navigator.language ?? '').toLowerCase();
+  return pref.startsWith('ru') ? 'ru' : 'en';
 }

@@ -37,3 +37,41 @@ describe('i18n parity', () => {
     expect(AGE_NAMES.en.length).toBe(AGE_NAMES.ru.length);
   });
 });
+
+import { afterEach, vi } from 'vitest';
+import { detectLang } from '../src/lib/i18n';
+
+describe('default language comes from the browser', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const env = (languages: string[], stored?: string) => {
+    vi.stubGlobal('navigator', { languages, language: languages[0] });
+    vi.stubGlobal('localStorage', { getItem: () => stored ?? null });
+  };
+  it('Russian browsers get Russian, everything else English', () => {
+    env(['ru-RU', 'en-US']);
+    expect(detectLang()).toBe('ru');
+    env(['ru']);
+    expect(detectLang()).toBe('ru');
+    env(['en-US']);
+    expect(detectLang()).toBe('en');
+    env(['de-DE', 'ru-RU']); // the first preference wins
+    expect(detectLang()).toBe('en');
+    env(['uk-UA']);
+    expect(detectLang()).toBe('en');
+  });
+  it('an explicit choice always wins over the browser', () => {
+    env(['ru-RU'], 'en');
+    expect(detectLang()).toBe('en');
+    env(['en-US'], 'ru');
+    expect(detectLang()).toBe('ru');
+  });
+  it('survives blocked storage', () => {
+    vi.stubGlobal('navigator', { languages: ['ru-RU'] });
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(detectLang()).toBe('ru');
+  });
+});

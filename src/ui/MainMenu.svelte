@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, hostRoom, joinRoom, manualStart, setCompat, setLang, setMenu, setMusicOn, setMusicVol, setName, setSfx, setSmartAi, startSolo, tr, trList } from '../lib/app.svelte';
+  import LangSwitch from './LangSwitch.svelte';
   import NetCheck from './NetCheck.svelte';
   import VersionSwitch from './VersionSwitch.svelte';
 
@@ -14,6 +15,7 @@
 </script>
 
 <div class="aw-ui fixed inset-0 z-10 flex overflow-auto p-4" data-testid="main-menu">
+  <div class="fixed right-3 top-3 z-20"><LangSwitch lang={app.lang} set={setLang} /></div>
   <div class="m-auto flex flex-col items-center gap-[clamp(8px,3vh,28px)] w-full">
   <header class="text-center select-none">
     <h1 class="aw-title text-[clamp(2.2rem,min(9vw,13vh),6.4rem)]">AGE OF WAR</h1>
@@ -60,7 +62,7 @@
         <button class="aw-btn wood small" onclick={() => manualStart('host')}>{tr('manualHost')}</button>
         <button class="aw-btn wood small" onclick={() => manualStart('guest')}>{tr('manualGuest')}</button>
       </div>
-      <NetCheck />
+      <NetCheck lang={app.lang} />
       <button class="aw-btn wood small" onclick={() => setMenu('home')}>← {tr('back')}</button>
     {:else if view === 'howto'}
       <h2 class="text-center text-xl font-black">{tr('howTo')}</h2>
@@ -96,7 +98,7 @@
   </main>
 
   <footer class="flex flex-col items-center gap-2 text-center">
-    <VersionSwitch current="original" block />
+    <VersionSwitch current="original" block lang={app.lang} />
   </footer>
   </div>
 </div>

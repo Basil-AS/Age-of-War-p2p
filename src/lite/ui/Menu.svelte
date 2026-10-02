@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, hostRoom, joinRoom, manualStart, setDifficulty, setLang, setCompat, setMusicOn, setName, setVol, startSolo, tr, trList } from '../lib/app.svelte';
+  import LangSwitch from '../../ui/LangSwitch.svelte';
   import NetCheck from '../../ui/NetCheck.svelte';
   import VersionSwitch from '../../ui/VersionSwitch.svelte';
   import type { Difficulty } from '../sim/types';
@@ -17,7 +18,8 @@
 </script>
 
 <div class="fixed inset-0 menu-bg overflow-auto">
-  <VersionSwitch current="lite" />
+  <div class="fixed right-3 top-3 z-20"><LangSwitch lang={app.lang} set={setLang} /></div>
+  <VersionSwitch current="lite" lang={app.lang} />
   <div class="min-h-full flex flex-col items-center justify-center gap-6 p-5">
     <div class="text-center">
       <h1 class="title text-5xl sm:text-7xl font-black text-amber-300">{tr('title')}</h1>
@@ -58,7 +60,7 @@
           <button class="btn btn-ghost text-sm" onclick={() => manualStart('host')}>{tr('manualHost')}</button>
           <button class="btn btn-ghost text-sm" onclick={() => manualStart('guest')}>{tr('manualGuest')}</button>
         </div>
-        <NetCheck />
+        <NetCheck lang={app.lang} />
         <button class="btn btn-ghost" onclick={() => (panel = 'main')}>← {tr('back')}</button>
       {:else if panel === 'howto'}
         <ul class="flex flex-col gap-3 text-sm leading-relaxed">
