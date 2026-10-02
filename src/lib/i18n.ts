@@ -163,7 +163,7 @@ const en = {
     'Play a friend: create a room, send the link — the game connects both browsers directly (peer-to-peer). No server, no account.',
   ],
   aboutText:
-    'An open-source remake of the classic Flash game "Age of War". All art is drawn procedurally; balance numbers follow the original. Built with Vite, Vue 3, PixiJS 8, Trystero (WebRTC) and a deterministic lockstep engine.',
+    'An open-source remake of the classic Flash game "Age of War". All art is drawn procedurally; balance numbers follow the original. Built with Vite, Svelte 5, PixiJS 8, Trystero (WebRTC) and a deterministic lockstep engine.',
   tip: 'Tip',
   rotate: 'Rotate your phone to landscape',
 };
@@ -247,7 +247,7 @@ const ru: typeof en = {
     'Игра с другом: создайте комнату и отправьте ссылку — браузеры соединяются напрямую (peer-to-peer). Без сервера и регистрации.',
   ],
   aboutText:
-    'Открытый ремейк классической Flash-игры «Age of War». Вся графика рисуется кодом; цифры баланса — как в оригинале. Сделано на Vite, Vue 3, PixiJS 8, Trystero (WebRTC) и детерминированном lockstep-движке.',
+    'Открытый ремейк классической Flash-игры «Age of War». Вся графика рисуется кодом; цифры баланса — как в оригинале. Сделано на Vite, Svelte 5, PixiJS 8, Trystero (WebRTC) и детерминированном lockstep-движке.',
   tip: 'Совет',
   rotate: 'Поверните телефон горизонтально',
 };

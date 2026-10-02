@@ -1,5 +1,5 @@
-import { createApp } from 'vue';
-import App from './ui/App.vue';
+import { mount } from 'svelte';
+import App from './ui/App.svelte';
 import './app.css';
 
-createApp(App).mount('#app');
+mount(App, { target: document.getElementById('app') as HTMLElement });

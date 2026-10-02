@@ -1,5 +1,5 @@
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
-import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
@@ -7,7 +7,7 @@ export default defineConfig({
   base: './',
   plugins: [
     tailwindcss(),
-    vue(),
+    svelte(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
