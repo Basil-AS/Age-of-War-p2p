@@ -26,7 +26,7 @@ async function pair(browser: import('@playwright/test').Browser, query: string, 
   const b = await c2.newPage();
   const errs: string[] = [];
   for (const p of [a, b]) p.on('pageerror', (e) => errs.push(String(e)));
-  await Promise.all([a.goto(`/${query}`), b.goto(`/${query}`)]);
+  await Promise.all([a.goto(`/original.html${query}`), b.goto(`/original.html${query}`)]);
   await Promise.all([ready(a), ready(b)]);
   await a.evaluate(() => (window as unknown as W).__aow.hostRoom());
   const code = await a.evaluate(() => (window as unknown as W).__aow.app.lobby.code);

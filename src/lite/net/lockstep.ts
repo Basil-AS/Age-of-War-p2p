@@ -1,9 +1,10 @@
-import { FPS, type OrigSim } from '../orig/sim';
-import type { Cmd, Side } from '../orig/types';
-import type { Msg, Transport } from './transport';
+import type { Msg, Transport } from '../../net/transport';
+import { SIM_HZ } from '../sim/data';
+import type { Sim } from '../sim/sim';
+import type { Cmd, Side } from '../sim/types';
 
 export const TURN_TICKS = 4; // one network turn = 4 sim ticks ≈ 98 ms
-const TICK_MS = 1000 / FPS;
+const TICK_MS = 1000 / SIM_HZ;
 const HASH_EVERY = 5; // turns
 
 export interface MatchStatus {
@@ -36,11 +37,9 @@ export class Lockstep {
   status: MatchStatus;
   /** non-lockstep messages (rematch, bye, …) */
   onOther: ((m: Msg) => void) | null = null;
-  /** called after every simulation step (the renderer advances its animations here) */
-  onTick: (() => void) | null = null;
 
   constructor(
-    readonly sim: OrigSim,
+    readonly sim: Sim,
     readonly side: Side,
     private tr: Transport,
     readonly delay: number,
@@ -58,7 +57,7 @@ export class Lockstep {
   }
 
   command(c: Cmd) {
-    if (!this.sim.winner) this.outbox.push(c);
+    if (this.sim.winner === -1) this.outbox.push(c);
   }
 
   private recv(m: Msg) {
@@ -106,7 +105,7 @@ export class Lockstep {
     }
     this.acc += dt * speed;
     let ran = 0;
-    while (this.acc >= TICK_MS && !this.sim.winner) {
+    while (this.acc >= TICK_MS && this.sim.winner === -1) {
       if (this.tickInTurn === 0) {
         if (!this.remote.has(this.turn)) {
           this.status.stalled = true;
@@ -133,10 +132,9 @@ export class Lockstep {
         const theirs = this.remote.get(this.turn) ?? [];
         this.local.delete(this.turn);
         this.remote.delete(this.turn);
-        if (this.side === 1) this.sim.step(mine, theirs);
+        if (this.side === 0) this.sim.step(mine, theirs);
         else this.sim.step(theirs, mine);
       } else this.sim.step();
-      this.onTick?.();
       ran++;
       this.acc -= TICK_MS;
       if (++this.tickInTurn === TURN_TICKS) {
@@ -144,7 +142,7 @@ export class Lockstep {
         this.turn++;
       }
     }
-    if (this.sim.winner) this.acc = 0;
+    if (this.sim.winner !== -1) this.acc = 0;
     return ran;
   }
 

@@ -14,7 +14,7 @@ const aow = (page: import('@playwright/test').Page, js: string) => page.evaluate
 test('title → difficulty → solo game with the original UI', async ({ page }) => {
   const errs: string[] = [];
   page.on('pageerror', (e) => errs.push(String(e)));
-  await page.goto('/');
+  await page.goto('/original.html');
   await page.waitForFunction(
     () => (window as unknown as { __aow?: { app: { phase: string } } }).__aow?.app.phase === 'title',
     null,

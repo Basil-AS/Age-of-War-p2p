@@ -1,15 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1020" />
-    <meta name="description" content="Age of War remake — 1v1 against a friend in the browser, peer-to-peer, no server." />
+    <meta name="description" content="Age of War — 1v1 online: оригинальная игра или лёгкая версия." />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <title>Age of War P2P</title>
+    <style>
+      :root { color-scheme: dark; --bg: #0b1020; --card: #141b34; --line: #2a3563; --gold: #fcd34d; --text: #e8ecff; --muted: #98a2c9; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+        background: radial-gradient(1200px 600px at 50% -10%, #25306a 0%, var(--bg) 60%); color: var(--text); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { width: min(920px, 100%); text-align: center; }
+      h1 { font-size: clamp(2rem, 6vw, 3.4rem); margin: 0 0 4px; color: var(--gold); letter-spacing: .02em; text-shadow: 0 3px 0 #7c4a03; }
+      p.sub { margin: 0 0 24px; color: var(--muted); }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+      a.card { display: flex; flex-direction: column; gap: 8px; text-align: left; padding: 20px; border-radius: 20px; background: var(--card); border: 1px solid var(--line);
+        color: inherit; text-decoration: none; transition: transform .15s, border-color .15s, box-shadow .15s; }
+      a.card:hover, a.card:focus-visible { transform: translateY(-3px); border-color: var(--gold); box-shadow: 0 10px 30px #0008; outline: none; }
+      .tag { align-self: flex-start; font-size: .72rem; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: #26325f; color: var(--gold); }
+      .name { font-size: 1.5rem; font-weight: 800; }
+      ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); font-size: .92rem; }
+      .go { margin-top: auto; padding-top: 10px; font-weight: 800; color: var(--gold); }
+      footer { margin-top: 22px; color: var(--muted); font-size: .8rem; }
+      footer a { color: var(--muted); }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <main>
+      <h1>AGE OF WAR</h1>
+      <p class="sub" id="sub"></p>
+      <div class="cards">
+        <a class="card" id="orig" href="./original.html">
+          <span class="tag" id="t1"></span>
+          <span class="name" id="n1"></span>
+          <ul id="l1"></ul>
+          <span class="go" id="g1"></span>
+        </a>
+        <a class="card" id="lite" href="./lite.html">
+          <span class="tag" id="t2"></span>
+          <span class="name" id="n2"></span>
+          <ul id="l2"></ul>
+          <span class="go" id="g2"></span>
+        </a>
+      </div>
+      <footer id="foot"></footer>
+    </main>
+    <script>
+      var ru = /^ru|^uk|^be|^kk/i.test(navigator.language || '');
+      var T = ru
+        ? { sub: 'Выбери версию. Онлайн 1 на 1 с другом есть в обеих.', t1: 'РЕКОМЕНДУЕМ', n1: 'Оригинал', l1: ['Точный порт оригинальной Flash-игры', 'Оригинальная графика, анимации, звуки, интерфейс', 'Умный бот и честная экономика (или классика)'], t2: 'ЛЁГКАЯ', n2: 'Всраатая', l2: ['Моя первая версия с нуля, без оригинальных ассетов', 'Грузится мгновенно, мало трафика', 'Удобна на слабых телефонах'], go: 'Играть →', foot: 'Ссылка-приглашение друга откроет нужную версию автоматически.' }
+        : { sub: 'Pick a version. 1v1 online with a friend works in both.', t1: 'RECOMMENDED', n1: 'Original', l1: ['Faithful port of the original Flash game', 'Original art, animations, sounds and UI', 'Smart bot with a fair economy (or classic)'], t2: 'LITE', n2: 'Vsraataya (the janky one)', l2: ['My first from-scratch version, no original assets', 'Instant load, tiny download', 'Easy on weak phones'], go: 'Play →', foot: 'A friend’s invite link opens the right version automatically.' };
+      function set(id, v) { document.getElementById(id).textContent = v; }
+      function list(id, a) { document.getElementById(id).innerHTML = a.map(function (x) { return '<li></li>'; }).join(''); var li = document.getElementById(id).children; for (var i = 0; i < a.length; i++) li[i].textContent = a[i]; }
+      set('sub', T.sub); set('t1', T.t1); set('n1', T.n1); list('l1', T.l1); set('g1', T.go);
+      set('t2', T.t2); set('n2', T.n2); list('l2', T.l2); set('g2', T.go); set('foot', T.foot);
+      document.documentElement.lang = ru ? 'ru' : 'en';
+      var h = location.hash || '';
+      document.getElementById('orig').href = './original.html' + h;
+      document.getElementById('lite').href = './lite.html' + h;
+    </script>
   </body>
 </html>

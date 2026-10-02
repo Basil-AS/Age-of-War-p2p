@@ -20,9 +20,13 @@ export default defineConfig({
         orientation: 'landscape',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg}'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg}'], navigateFallback: null },
     }),
   ],
-  build: { target: 'es2023', chunkSizeWarningLimit: 900 },
+  build: {
+    target: 'es2023',
+    chunkSizeWarningLimit: 900,
+    rollupOptions: { input: { index: 'index.html', original: 'original.html', lite: 'lite.html' } },
+  },
   test: { include: ['tests/**/*.test.ts'], environment: 'node' },
 });

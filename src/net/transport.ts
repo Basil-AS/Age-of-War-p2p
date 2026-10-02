@@ -1,10 +1,11 @@
-import type { Cmd } from '../orig/types';
+/** a game command as it travels (each game defines its own concrete command type) */
+export type WireCmd = { t: string; [k: string]: string | number };
 
 /** Everything that crosses the wire. Tiny JSON — a whole match is a few KB. */
 export type Msg =
   | { k: 'hello'; name: string }
   | { k: 'init'; seed: number; delay: number; hostName: string }
-  | { k: 'turn'; n: number; cmds: Cmd[]; hn?: number; h?: number }
+  | { k: 'turn'; n: number; cmds: WireCmd[]; hn?: number; h?: number }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
   | { k: 'rtt'; t: number; e?: 1 }
