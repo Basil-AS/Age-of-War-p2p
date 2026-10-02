@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, boot, tr } from '../lib/app.svelte';
+  import { purgeAndReload } from '../lib/heal';
   import FriendPanel from './FriendPanel.svelte';
   import GameMenu from './GameMenu.svelte';
   import Lobby from './Lobby.svelte';
@@ -19,7 +20,9 @@
 <div class="rotate-hint fixed inset-0 z-50 hidden place-items-center bg-black/85 text-center p-8 text-amber-200 text-xl font-bold">📱↻<br />{tr('rotate')}</div>
 
 {#if app.loadError}
-  <div class="fixed inset-0 grid place-items-center p-6 text-center bg-black text-rose-300">{app.loadError}</div>
+  <div class="fixed inset-0 grid place-items-center p-6 text-center bg-black text-rose-300">
+    <div class="flex flex-col gap-4 items-center"><div>{app.loadError}</div><button class="btn btn-primary" onclick={purgeAndReload}>↻ Reload / очистить кэш</button></div>
+  </div>
 {:else if app.phase === 'loading'}
   <div class="fixed inset-0 grid place-items-center menu-bg">
     <div class="title text-3xl text-amber-300 animate-pulse">AGE OF WAR</div>

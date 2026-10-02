@@ -6,6 +6,7 @@ import { guestHandshake, hostHandshake } from '../net/session';
 import { type Msg, makeRoomCode, normalizeCode, type Transport } from '../net/transport';
 import { OrigApp } from '../orig/app';
 import type { Side } from '../orig/types';
+import { healOnce } from './heal';
 import { detectLang, type Key, type Lang, STRINGS } from './i18n';
 
 export type Phase = 'loading' | 'title' | 'game' | 'result';
@@ -154,6 +155,7 @@ export async function boot(canvas: HTMLCanvasElement) {
     poll = setInterval(refreshNet, 250);
     checkLink();
   } catch (e) {
+    if (healOnce()) return;
     app.loadError = e instanceof Error ? e.message : String(e);
   }
 }
