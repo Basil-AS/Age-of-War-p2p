@@ -322,7 +322,7 @@ export class OrigApp {
     const p = sim.player(me);
     if (k === ' ') {
       e.preventDefault();
-      this.togglePause();
+      if (!this.match?.online) this.hooks.menu(); // shows the pause menu and pauses
     } else if (k === 'escape') this.hooks.menu();
     else if (k === 'arrowleft' || k === 'a') {
       e.preventDefault();

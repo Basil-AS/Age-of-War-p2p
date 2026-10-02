@@ -16,7 +16,12 @@ type G = {
     match: {
       sim: { frame: number; player(s: number): { cash: number; xp: number; tech: number; special: number } };
     } | null;
-    orig: { viewW: number; scene: { scroll: number; viewW: number } | null; assets: { quality: string } };
+    orig: {
+      viewW: number;
+      autoPause: boolean;
+      scene: { scroll: number; viewW: number } | null;
+      assets: { quality: string };
+    };
   };
 };
 const g = <T>(page: import('@playwright/test').Page, f: (a: G['__aow']) => T) =>
@@ -273,4 +278,13 @@ test('auto-pause on a hidden window can be turned off', async ({ page }) => {
   });
   await hide();
   await expect.poll(() => g(page, (a) => a.app.paused)).toBe(true);
+});
+
+test('Space pauses with a visible pause menu and Space resumes', async ({ page }) => {
+  await startSolo(page);
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('pause-menu')).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('pause-menu')).toBeHidden();
+  await expect.poll(() => g(page, (a) => a.app.paused)).toBe(false);
 });
