@@ -177,6 +177,8 @@ export async function boot(canvas: HTMLCanvasElement) {
       return match;
     },
     app,
+    hostRoom,
+    joinRoom,
   };
   window.addEventListener('hashchange', checkLink);
   checkLink();

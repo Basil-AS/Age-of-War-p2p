@@ -16,23 +16,33 @@ type W = {
     joinRoom(c: string): void;
   };
 };
-const ready = (p: Page) =>
-  p.waitForFunction(() => (window as unknown as W).__aow?.app.phase === 'title', null, { timeout: 90_000 });
+const ready = (p: Page) => p.waitForFunction(() => !!(window as unknown as W).__aow, null, { timeout: 90_000 });
 
-async function pair(browser: import('@playwright/test').Browser, query: string, sameContext: boolean) {
+async function pair(
+  browser: import('@playwright/test').Browser,
+  query: string,
+  sameContext: boolean,
+  page = 'original.html',
+) {
   const c1 = await browser.newContext();
   const c2 = sameContext ? c1 : await browser.newContext();
   const a = await c1.newPage();
   const b = await c2.newPage();
   const errs: string[] = [];
   for (const p of [a, b]) p.on('pageerror', (e) => errs.push(String(e)));
-  await Promise.all([a.goto(`/original.html${query}`), b.goto(`/original.html${query}`)]);
+  await Promise.all([a.goto(`/${page}${query}`), b.goto(`/${page}${query}`)]);
   await Promise.all([ready(a), ready(b)]);
   await a.evaluate(() => (window as unknown as W).__aow.hostRoom());
   const code = await a.evaluate(() => (window as unknown as W).__aow.app.lobby.code);
   await b.evaluate((c) => (window as unknown as W).__aow.joinRoom(c), code);
   for (const p of [a, b])
-    await p.waitForFunction(() => (window as unknown as W).__aow.app.phase === 'game', null, { timeout: 60_000 });
+    await p.waitForFunction(
+      () =>
+        (window as unknown as W).__aow.app.phase === 'game' ||
+        (window as unknown as { __aow: { app: { screen?: string } } }).__aow.app.screen === 'game',
+      null,
+      { timeout: 60_000 },
+    );
   return { a, b, errs };
 }
 
@@ -61,5 +71,15 @@ test('fallback: WebSocket relay only (no WebRTC, no public servers)', async ({ b
   const { a, b, errs } = await pair(browser, '?rungs=relay-ws&ws=ws://localhost:7779', false);
   expect(await a.evaluate(() => (window as unknown as W).__aow.app.lobby.via)).toBe('relay-ws');
   await playAndCompare(a, b);
+  expect(errs).toEqual([]);
+});
+
+test('lite version: lockstep PvP on one device', async ({ browser }) => {
+  const { a, b, errs } = await pair(browser, '?net=local', true, 'lite.html');
+  await a.evaluate(() => (window as unknown as W).__aow.match?.command({ t: 'buy', u: 0 }));
+  await b.evaluate(() => (window as unknown as W).__aow.match?.command({ t: 'buy', u: 0 }));
+  await a.waitForTimeout(6000);
+  const sides = await Promise.all([a, b].map((p) => p.evaluate(() => (window as unknown as W).__aow.match?.side)));
+  expect([...sides].sort()).toEqual([0, 1]);
   expect(errs).toEqual([]);
 });
