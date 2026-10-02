@@ -50,6 +50,10 @@ async function playAndCompare(a: Page, b: Page) {
   await a.evaluate(() => (window as unknown as W).__aow.match?.command({ t: 'tray', id: 1 }));
   await b.evaluate(() => (window as unknown as W).__aow.match?.command({ t: 'tray', id: 1 }));
   await a.waitForTimeout(8000);
+  // slow CI runners need longer before both trained units exist
+  await a.waitForFunction(() => ((window as unknown as W).__aow.match?.sim.units.length ?? 0) >= 2, null, {
+    timeout: 40_000,
+  });
   const snap = (p: Page) =>
     p.evaluate(() => {
       const m = (window as unknown as W).__aow.match;

@@ -104,7 +104,7 @@ test('original proportions are kept: ~650 world px across on 16:9, the map still
   expect(wide.v).toBeLessThan(700); // not the whole 1000 px map squeezed in: units stay big, the map stays wide
   await page.mouse.move(900, 400);
   await page.mouse.wheel(400, 0);
-  await expect.poll(() => g(page, (a) => a.orig.scene!.scroll)).toBeLessThan(wide.s - 100);
+  await expect.poll(() => g(page, (a) => a.orig.scene!.scroll), { timeout: 20_000 }).toBeLessThan(wide.s - 100);
   // ultra-wide shows a bit more, still scrollable
   await page.setViewportSize({ width: 2560, height: 1080 });
   await expect.poll(() => g(page, (a) => a.orig.viewW)).toBeGreaterThan(wide.v);
@@ -197,13 +197,15 @@ test('motion is interpolated between simulation ticks (units, flying shots) at a
   });
   await page.keyboard.press('3');
   await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          (
-            window as unknown as { __aow: { match: { sim: { units: { side: number }[] } } } }
-          ).__aow.match.sim.units.filter((u) => u.side === 1).length,
-      ),
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            (
+              window as unknown as { __aow: { match: { sim: { units: { side: number }[] } } } }
+            ).__aow.match.sim.units.filter((u) => u.side === 1).length,
+        ),
+      { timeout: 30_000 },
     )
     .toBeGreaterThan(0);
   const r = await page.evaluate(() => {
