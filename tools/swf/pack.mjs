@@ -20,12 +20,21 @@ export class Packer {
       let data, info;
       try { const buf = await it.loader(); ({ data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true })); }
       catch { (buckets.get(it.bucket) ?? buckets.set(it.bucket, []).get(it.bucket)).push({ key, empty: true, ox: it.ox, oy: it.oy }); continue; }
+      let k = this.scale;
+      const maxDim = this.size - this.pad * 2;
+      if (info.width > maxDim || info.height > maxDim) {
+        // oversized (backdrops): shrink to fit an atlas and remember the true density of this frame
+        const f = Math.min(maxDim / info.width, maxDim / info.height);
+        const nw = Math.floor(info.width * f), nh = Math.floor(info.height * f);
+        data = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).resize(nw, nh).raw().toBuffer();
+        info = { ...info, width: nw, height: nh }; k = this.scale * f;
+      }
       let x0 = info.width, y0 = info.height, x1 = -1, y1 = -1;
       for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) if (data[(y * info.width + x) * 4 + 3] > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       if (x1 < 0) { (buckets.get(it.bucket) ?? buckets.set(it.bucket, []).get(it.bucket)).push({ key, empty: true, ox: it.ox, oy: it.oy }); continue; }
       const w = x1 - x0 + 1, h = y1 - y0 + 1;
       const crop = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).extract({ left: x0, top: y0, width: w, height: h }).raw().toBuffer();
-      (buckets.get(it.bucket) ?? buckets.set(it.bucket, []).get(it.bucket)).push({ key, w, h, crop, ox: it.ox + x0 / this.scale, oy: it.oy + y0 / this.scale });
+      (buckets.get(it.bucket) ?? buckets.set(it.bucket, []).get(it.bucket)).push({ key, w, h, crop, k, ox: it.ox + x0 / k, oy: it.oy + y0 / k });
       if (++n % 500 === 0) console.log('  trimmed', n);
     }
     const manifest = { size: this.size, scale: this.scale, atlases: [], frames: {} };
@@ -58,7 +67,7 @@ export class Packer {
         writeFileSync(`${this.out}/${name}`, buf);
         const ai = manifest.atlases.length;
         manifest.atlases.push({ file: name, bucket, w: this.size, h: height, bytes: buf.length });
-        for (const p of s.placed) manifest.frames[p.it.key] = { a: ai, x: p.x, y: p.y, w: p.it.w, h: p.it.h, ox: p.it.ox, oy: p.it.oy };
+        for (const p of s.placed) manifest.frames[p.it.key] = { a: ai, x: p.x, y: p.y, w: p.it.w, h: p.it.h, ox: p.it.ox, oy: p.it.oy, ...(p.it.k !== this.scale ? { k: Math.round(p.it.k * 1000) / 1000 } : {}) };
         console.log(`  ${name} ${this.size}x${height} ${(buf.length / 1024).toFixed(0)}KB (${s.placed.length} frames)`);
       }
     }

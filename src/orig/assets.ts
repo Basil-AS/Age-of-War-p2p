@@ -9,6 +9,8 @@ export interface FrameInfo {
   h: number;
   ox: number;
   oy: number;
+  /** atlas pixels per stage pixel for oversized frames that were shrunk to fit */
+  k?: number;
 }
 interface Manifest {
   size: number;
@@ -73,7 +75,7 @@ export class OrigAssets {
       const atlas = this.atlasTexSync(f.a);
       if (!atlas) return null;
       // hi-res atlases: the texture keeps its original (stage-pixel) size via `orig`, so sprites need no rescaling
-      const k = this.manifest.scale ?? 1;
+      const k = f.k ?? this.manifest.scale ?? 1;
       t = new Texture({
         source: atlas.source,
         frame: new Rectangle(f.x, f.y, f.w, f.h),
