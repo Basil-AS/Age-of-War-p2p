@@ -1,5 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { type CheckResult, formatReport, judge, runNetCheck } from '../net/netcheck';
+  import { rankRelays } from '../net/relayrank';
+  // while the player is in the friend panel, find which signalling servers answer fastest from THIS network
+  onMount(() => void rankRelays());
 
   const ru = /^ru|^uk|^be|^kk/i.test(navigator.language || '');
   const T = ru

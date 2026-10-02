@@ -2,6 +2,7 @@ import { createLocalTransport } from './local';
 import { createMqttPipe } from './mqttpipe';
 import { MultiTransport } from './multi';
 import { createNostrPipe } from './nostrpipe';
+import { rankedMqtt, rankedNostr } from './relayrank';
 import { createReliableTransport } from './reliable';
 import { guestHandshake, type Handshake, hostHandshake } from './session';
 import type { Transport } from './transport';
@@ -73,7 +74,8 @@ export const RUNGS: RungDef[] = [
     id: 'nostr',
     startAt: 0,
     needsWebRtc: true,
-    make: (c) => createTrysteroTransport(c.code, { relay: 'nostr', relayUrls: list(c.params.get('relayUrl')) }),
+    make: (c) =>
+      createTrysteroTransport(c.code, { relay: 'nostr', relayUrls: list(c.params.get('relayUrl')) ?? rankedNostr() }),
   },
   { id: 'torrent', startAt: 6, needsWebRtc: true, make: (c) => createTrysteroTransport(c.code, { relay: 'torrent' }) },
   { id: 'mqtt', startAt: 6, needsWebRtc: true, make: (c) => createTrysteroTransport(c.code, { relay: 'mqtt' }) },
@@ -84,7 +86,7 @@ export const RUNGS: RungDef[] = [
     make: (c) =>
       createTrysteroTransport(c.code, {
         relay: 'nostr',
-        relayUrls: list(c.params.get('relayUrl')),
+        relayUrls: list(c.params.get('relayUrl')) ?? rankedNostr(),
         turn: turnServers(c.params),
         suffix: '~turn',
       }),
@@ -93,13 +95,15 @@ export const RUNGS: RungDef[] = [
     id: 'relay-nostr',
     startAt: 22,
     needsWebRtc: false,
-    make: async (c) => createReliableTransport(createNostrPipe(c.code, list(c.params.get('relayUrl'))), c.code),
+    make: async (c) =>
+      createReliableTransport(createNostrPipe(c.code, list(c.params.get('relayUrl')) ?? rankedNostr()), c.code),
   },
   {
     id: 'relay-mqtt',
     startAt: 22,
     needsWebRtc: false,
-    make: async (c) => createReliableTransport(createMqttPipe(c.code, list(c.params.get('mqttUrl'))), c.code),
+    make: async (c) =>
+      createReliableTransport(createMqttPipe(c.code, list(c.params.get('mqttUrl')) ?? rankedMqtt()), c.code),
   },
   {
     id: 'relay-ws',

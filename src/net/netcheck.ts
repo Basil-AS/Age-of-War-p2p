@@ -69,7 +69,7 @@ function gather(
   });
 }
 
-function wsPing(env: Env, url: string, timeoutMs: number) {
+export function wsPing(env: Env, url: string, timeoutMs: number) {
   return new Promise<{ ok: boolean; ms: number; detail?: string }>((resolve) => {
     const WS = env.WebSocket;
     if (!WS) return resolve({ ok: false, ms: 0, detail: 'WebSocket unavailable' });
