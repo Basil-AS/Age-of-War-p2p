@@ -1,3 +1,4 @@
+import { reactive } from 'vue';
 import { isMusicOn, setMusic, setMusicAge, setVolume, sfx, startMusic, stopMusic } from '../audio';
 import { createLocalTransport } from '../net/local';
 import { type Match, OnlineMatch, SoloMatch } from '../net/match';
@@ -63,7 +64,7 @@ const write = (k: string, v: string) => {
   }
 };
 
-export const app = $state({
+export const app = reactive({
   screen: 'menu' as Screen,
   lang: detectLang() as Lang,
   name: read('aow.name', ''),

@@ -29,12 +29,12 @@ npm run dev        # http://localhost:5173
 |---|---|
 | Сборка / dev | **Vite 8**, **TypeScript** (strict) |
 | Рендер | **PixiJS 8** (WebGL, опционально WebGPU: `?gpu`) — вся графика рисуется кодом, без файлов-ассетов |
-| UI | **Svelte 5** (runes) + **Tailwind CSS 4** |
+| UI | **Vue 3.5** (Composition API, `<script setup>`) + **Tailwind CSS 4** |
 | Сеть | **Trystero** (WebRTC data channels; сигналинг через Nostr / BitTorrent / MQTT — на выбор) |
 | Движок | собственный **детерминированный lockstep** на фиксированных 41 тиках/с |
 | Звук | процедурный WebAudio (эффекты + генеративная музыка), 0 КБ ассетов |
 | Тесты | **Vitest** (правила, баланс, сеть с лагами/джиттером), **Playwright** (реальный WebRTC между двумя браузерами) |
-| Качество | **Biome**, `svelte-check`, GitHub Actions CI, PWA (offline против ИИ) |
+| Качество | **Biome**, `vue-tsc`, GitHub Actions CI, PWA (offline против ИИ) |
 
 ### Как устроен P2P
 
@@ -65,7 +65,7 @@ npm run dev        # http://localhost:5173
 
 ```bash
 npm test            # правила, детерминизм, ИИ, lockstep при лаге 200±150 мс, детект рассинхронизации
-npm run check       # svelte-check + TypeScript
+npm run check       # vue-tsc (TypeScript + шаблоны)
 npm run lint        # Biome
 npm run build && npm run e2e   # Playwright: соло, мобильный лэйаут, онлайн 1v1 (BroadcastChannel) и реальный WebRTC
 ```
@@ -77,8 +77,8 @@ npm run build && npm run e2e   # Playwright: соло, мобильный лэй
 src/sim/      детерминированное ядро: data (оригинальные цифры), sim, ai, rng
 src/net/      lockstep, session (рукопожатие), transports: trystero (WebRTC), local, loopback (тесты)
 src/render/   PixiJS: процедурная графика (art.ts) и сцена/эффекты (renderer.ts)
-src/ui/       Svelte 5: меню, лобби, HUD, оверлеи
-src/lib/      состояние приложения (runes), i18n
+src/ui/       Vue 3: меню, лобби, HUD, оверлеи
+src/lib/      состояние приложения (reactive), i18n
 ```
 
 ## Благодарности и честность
