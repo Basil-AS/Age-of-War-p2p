@@ -35,3 +35,13 @@ wss.on('connection', (ws) => {
   ws.on('close', () => subs.delete(ws));
 });
 console.log(`relay listening on ws://localhost:${port}`);
+
+// ── MQTT-over-WebSocket broker (aedes) for the relay-mqtt route ──
+import { Aedes } from 'aedes';
+import { createWebSocketStream } from 'ws';
+
+const aedes = await Aedes.createBroker();
+const mqttPort = Number(process.env.MQTT_PORT || 7778);
+const mwss = new WebSocketServer({ port: mqttPort, handleProtocols: () => 'mqtt' });
+mwss.on('connection', (ws) => aedes.handle(createWebSocketStream(ws)));
+console.log(`mqtt broker listening on ws://localhost:${mqttPort}`);

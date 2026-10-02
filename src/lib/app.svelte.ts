@@ -1,9 +1,9 @@
 import { isMusicOn, setMusic, setMusicAge, setVolume, sfx, startMusic, stopMusic } from '../audio';
-import { createLocalTransport } from '../net/local';
+import { connectLadder, type Ladder, type RungId, type RungState } from '../net/connect';
+import { ManualPeer } from '../net/manual';
 import { type Match, OnlineMatch, SoloMatch } from '../net/match';
 import { guestHandshake, hostHandshake } from '../net/session';
 import { type Msg, makeRoomCode, normalizeCode, type Transport } from '../net/transport';
-import { createTrysteroTransport, type Relay } from '../net/trystero';
 import { GameRenderer } from '../render/renderer';
 import {
   SIM_HZ,
@@ -70,7 +70,7 @@ export const app = $state({
   volume: Number(read('aow.vol', '0.6')),
   music: read('aow.music', '1') === '1',
   difficulty: read('aow.diff', 'normal') as Difficulty,
-  relay: read('aow.relay', 'nostr') as Relay,
+  compat: read('aow.compat', '0') === '1',
   speed: 1,
   hud: null as Hud | null,
   icons: {} as Record<string, string>,
@@ -81,8 +81,25 @@ export const app = $state({
     state: 'idle' as 'idle' | 'waiting' | 'connecting' | 'connected' | 'error',
     slow: false,
     error: '',
+    rungs: [] as RungState[],
+    via: '' as RungId | 'manual' | '',
+    manual: {
+      step: 'off' as 'off' | 'offer' | 'paste-offer' | 'paste-answer' | 'show-answer' | 'connecting',
+      offer: '',
+      answer: '',
+      error: '',
+      busy: false,
+    },
   },
-  net: { online: false, rtt: 0, stalled: false, desync: false, peerLeft: false, delay: 0 },
+  net: {
+    online: false,
+    rtt: 0,
+    stalled: false,
+    desync: false,
+    peerLeft: false,
+    delay: 0,
+    via: '' as RungId | 'manual' | '',
+  },
   paused: false,
   menuOpen: false,
   rematch: { mine: false, theirs: false },
@@ -123,9 +140,9 @@ export function setDifficulty(d: Difficulty) {
   app.difficulty = d;
   write('aow.diff', d);
 }
-export function setRelay(r: Relay) {
-  app.relay = r;
-  write('aow.relay', r);
+export function setCompat(on: boolean) {
+  app.compat = on;
+  write('aow.compat', on ? '1' : '0');
 }
 export function myName() {
   return app.name.trim() || (app.lang === 'ru' ? 'Игрок' : 'Player');
@@ -139,8 +156,10 @@ export async function boot(canvas: HTMLCanvasElement) {
   renderer.banner = (text, kind) => {
     app.banner = { text, kind, id: ++bannerId };
   };
-  app.icons = await renderer.makeIcons();
-  app.ready = true;
+  app.ready = true; // menu is usable immediately; unit icons are rendered in the background
+  void renderer.makeIcons().then((icons) => {
+    app.icons = icons;
+  });
   const loop = (now: number) => {
     if (match && app.screen === 'game') {
       if (!app.paused) match.update(now);
@@ -168,7 +187,8 @@ export function setInsets(top: number, bottom: number) {
 }
 
 function attach(m: Match) {
-  match?.destroy?.();
+  if (match?.online && m.online && match.release) match.release();
+  else match?.destroy?.();
   match = m;
   renderer?.attach(m);
   app.screen = 'game';
@@ -176,7 +196,15 @@ function attach(m: Match) {
   app.menuOpen = false;
   app.rematch = { mine: false, theirs: false };
   app.banner = null;
-  app.net = { online: m.online, rtt: 0, stalled: false, desync: false, peerLeft: false, delay: m.status.delay };
+  app.net = {
+    online: m.online,
+    rtt: 0,
+    stalled: false,
+    desync: false,
+    peerLeft: false,
+    delay: m.status.delay,
+    via: m.online ? app.lobby.via : '',
+  };
   refreshHud();
   startMusic();
 }
@@ -192,6 +220,10 @@ export function startSolo(diff = app.difficulty) {
 }
 
 function disposeTransport() {
+  ladder?.cancel();
+  ladder = null;
+  manual?.transport.close();
+  manual = null;
   try {
     transport?.close();
   } catch {
@@ -200,62 +232,130 @@ function disposeTransport() {
   transport = null;
 }
 
-async function makeTransport(code: string): Promise<Transport> {
-  if (new URLSearchParams(location.search).get('net') === 'local') return createLocalTransport(code);
-  const custom = new URLSearchParams(location.search).get('relayUrl');
-  return createTrysteroTransport(code, app.relay, custom ? [custom] : undefined);
-}
+let ladder: Ladder | null = null;
+let manual: ManualPeer | null = null;
 
 function linkFor(code: string) {
   const u = new URL(location.href);
-  u.hash = `join=${code}&relay=${app.relay}`;
-  u.search = u.search.includes('net=local') ? '?net=local' : '';
+  u.hash = `join=${code}`;
   return u.toString();
 }
 
-export async function hostRoom() {
+function resetLobby(role: 'host' | 'guest', code: string, link: string, state: 'waiting' | 'connecting') {
+  app.lobby = {
+    role,
+    code,
+    link,
+    state,
+    slow: false,
+    error: '',
+    rungs: [],
+    via: '',
+    manual: { step: 'off', offer: '', answer: '', error: '', busy: false },
+  };
+  app.screen = 'lobby';
+}
+
+function runLadder(code: string, role: 'host' | 'guest') {
+  const params = new URLSearchParams(location.search);
+  if (app.compat && !params.has('rungs')) params.set('rungs', 'relay-nostr,relay-mqtt,relay-ws');
+  const slow = setTimeout(() => {
+    app.lobby.slow = true;
+  }, 25000);
+  const l = connectLadder(code, role, myName(), params, () => {
+    if (ladder) app.lobby.rungs = ladder.rungs.map((r) => ({ ...r }));
+  });
+  ladder = l;
+  app.lobby.rungs = l.rungs.map((r) => ({ ...r }));
+  l.result
+    .then(({ transport: t, rung, hs }) => {
+      clearTimeout(slow);
+      transport = t;
+      app.lobby.state = 'connected';
+      app.lobby.via = rung;
+      app.peerName = hs.peerName;
+      startOnline(hs.seed, hs.side, hs.delay);
+    })
+    .catch((e) => {
+      clearTimeout(slow);
+      if (ladder !== l) return; // cancelled
+      app.lobby.state = 'error';
+      app.lobby.error = e instanceof Error ? e.message : String(e);
+      app.lobby.slow = true;
+    });
+}
+
+export function hostRoom() {
   sfx('click');
   disposeTransport();
   const code = makeRoomCode();
-  app.lobby = { role: 'host', code, link: linkFor(code), state: 'waiting', slow: false, error: '' };
-  app.screen = 'lobby';
-  try {
-    transport = await makeTransport(code);
-    const slow = setTimeout(() => {
-      app.lobby.slow = true;
-    }, 25000);
-    const hs = await hostHandshake(transport, myName());
-    clearTimeout(slow);
-    app.lobby.state = 'connected';
-    app.peerName = hs.peerName;
-    startOnline(hs.seed, hs.side, hs.delay);
-  } catch (e) {
-    app.lobby.state = 'error';
-    app.lobby.error = String(e);
-  }
+  resetLobby('host', code, linkFor(code), 'waiting');
+  runLadder(code, 'host');
 }
 
-export async function joinRoom(raw: string) {
+export function joinRoom(raw: string) {
   const code = normalizeCode(raw);
   if (code.length < 4) return;
   sfx('click');
   disposeTransport();
-  app.lobby = { role: 'guest', code, link: '', state: 'connecting', slow: false, error: '' };
-  app.screen = 'lobby';
-  try {
-    transport = await makeTransport(code);
-    const slow = setTimeout(() => {
-      app.lobby.slow = true;
-    }, 25000);
-    const hs = await guestHandshake(transport, myName());
-    clearTimeout(slow);
-    app.lobby.state = 'connected';
-    app.peerName = hs.peerName;
-    startOnline(hs.seed, hs.side, hs.delay);
-  } catch (e) {
-    app.lobby.state = 'error';
-    app.lobby.error = String(e);
+  resetLobby('guest', code, '', 'connecting');
+  runLadder(code, 'guest');
+}
+
+/** No-server mode: two copy-pasted codes. */
+export async function manualStart(role: 'host' | 'guest') {
+  sfx('click');
+  disposeTransport();
+  resetLobby(role, '', '', role === 'host' ? 'waiting' : 'connecting');
+  app.lobby.via = 'manual';
+  const m = app.lobby.manual;
+  if (typeof RTCPeerConnection === 'undefined') {
+    m.error = 'WebRTC unavailable';
+    return;
   }
+  manual = new ManualPeer();
+  if (role === 'host') {
+    m.step = 'offer';
+    m.busy = true;
+    try {
+      m.offer = await manual.createOffer();
+    } catch (e) {
+      m.error = String(e);
+    }
+    m.busy = false;
+  } else m.step = 'paste-offer';
+}
+
+export async function manualSubmit(text: string) {
+  const m = app.lobby.manual;
+  const peer = manual;
+  if (!peer) return;
+  m.error = '';
+  m.busy = true;
+  try {
+    if (app.lobby.role === 'host') {
+      await peer.acceptAnswer(text);
+      m.step = 'connecting';
+      const hs = await hostHandshake(peer.transport, myName());
+      finishManual(peer, hs);
+    } else {
+      m.answer = await peer.acceptOffer(text);
+      m.step = 'show-answer';
+      const hs = await guestHandshake(peer.transport, myName());
+      finishManual(peer, hs);
+    }
+  } catch {
+    m.error = 'bad code';
+  }
+  m.busy = false;
+}
+
+function finishManual(peer: ManualPeer, hs: { seed: number; side: 0 | 1; delay: number; peerName: string }) {
+  transport = peer.transport;
+  manual = null;
+  app.lobby.state = 'connected';
+  app.peerName = hs.peerName;
+  startOnline(hs.seed, hs.side, hs.delay);
 }
 
 function startOnline(seed: number, side: 0 | 1, delay: number) {
@@ -315,8 +415,6 @@ export function cancelLobby() {
 
 function checkLink() {
   const m = /join=([A-Za-z0-9]+)/.exec(location.hash);
-  const r = /relay=(nostr|torrent|mqtt)/.exec(location.hash);
-  if (r) app.relay = r[1] as Relay;
   if (m && app.screen === 'menu') void joinRoom(m[1] as string);
 }
 
@@ -390,6 +488,7 @@ function refreshHud() {
     desync: s.desync,
     peerLeft: s.peerLeft,
     delay: s.delay,
+    via: match.online ? app.lobby.via : '',
   };
 }
 

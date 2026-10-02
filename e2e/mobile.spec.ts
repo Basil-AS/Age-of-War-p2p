@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+test.afterEach(async ({ browser }) => {
+  // contexts we create by hand are not auto-closed — stop their game loops so tests do not starve each other
+  for (const c of browser.contexts()) await c.close();
+});
+
 test('phone landscape layout', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
   const p = await ctx.newPage();

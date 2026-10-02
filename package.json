@@ -14,9 +14,11 @@
     "lint": "biome check ."
   },
   "dependencies": {
+    "@noble/secp256k1": "^3.2.0",
     "@trystero-p2p/mqtt": "^0.25.4",
     "@trystero-p2p/nostr": "^0.25.4",
     "@trystero-p2p/torrent": "^0.25.4",
+    "mqtt": "^5.16.0",
     "pixi.js": "^8.22.0",
     "trystero": "^0.25.4"
   },
@@ -27,6 +29,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/ws": "^8.18.2",
+    "aedes": "^1.2.0",
     "svelte": "^5.57.1",
     "svelte-check": "^4.7.6",
     "tailwindcss": "^4.3.3",

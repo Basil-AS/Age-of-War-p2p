@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+test.afterEach(async ({ browser }) => {
+  // contexts we create by hand are not auto-closed — stop their game loops so tests do not starve each other
+  for (const c of browser.contexts()) await c.close();
+});
+
 // Real Trystero + WebRTC data channels (no BroadcastChannel shortcut). A tiny local Nostr relay
 // (e2e/tools/relay.mjs) does the signalling so the test runs offline; set RELAY_URL='' and
 // WEBRTC_PUBLIC=1 to run it against the real public relays instead.

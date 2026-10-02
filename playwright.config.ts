@@ -15,5 +15,6 @@ export default defineConfig({
   webServer: [
     { command: 'npx vite preview --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: true },
     { command: 'node e2e/tools/relay.mjs', port: 7777, reuseExistingServer: true },
+    { command: 'node server/relay.mjs', env: { PORT: '7779' }, port: 7779, reuseExistingServer: true },
   ],
 });

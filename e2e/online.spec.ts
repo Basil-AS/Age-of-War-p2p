@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+test.afterEach(async ({ browser }) => {
+  // contexts we create by hand are not auto-closed — stop their game loops so tests do not starve each other
+  for (const c of browser.contexts()) await c.close();
+});
+
 /**
  * Two browser tabs play each other through the same-device BroadcastChannel transport
  * (identical lockstep code path as WebRTC) — proves the whole online flow end to end.
@@ -20,8 +25,8 @@ test('online 1v1: host creates room, friend joins by link, both stay in sync', a
   expect(code).toHaveLength(5);
 
   await b.goto(`/?net=local#join=${code}&relay=nostr`);
-  await expect(a.getByTestId('gold')).toBeVisible({ timeout: 15000 });
-  await expect(b.getByTestId('gold')).toBeVisible({ timeout: 15000 });
+  await expect(a.getByTestId('gold')).toBeVisible({ timeout: 45_000 });
+  await expect(b.getByTestId('gold')).toBeVisible({ timeout: 45_000 });
 
   // both buy units
   for (let i = 0; i < 4; i++) {

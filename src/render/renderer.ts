@@ -156,6 +156,7 @@ export class GameRenderer {
       animateRig(rig, u, 0, false, 0, 0);
       out[`u${u.id}`] = await ex.base64({ target: rig.root, resolution: 2, antialias: true });
       rig.root.destroy({ children: true });
+      await idle();
     }
     for (const t of TURRETS) {
       const tr = buildTurret(t.id, true);
@@ -163,6 +164,7 @@ export class GameRenderer {
       c.addChild(tr.root);
       out[`t${t.id}`] = await ex.base64({ target: c, resolution: 3, antialias: true });
       c.destroy({ children: true });
+      await idle();
     }
     return out;
   }
@@ -824,6 +826,9 @@ export class GameRenderer {
     this.app.destroy(false, { children: true });
   }
 }
+
+/** let the browser breathe between heavy one-off jobs so menus/handshakes never stall */
+const idle = () => new Promise<void>((r) => setTimeout(r, 40));
 
 const ledgeState = new WeakMap<Graphics, boolean>();
 function drawSlotLedgeCached(g: Graphics, unlocked: boolean) {

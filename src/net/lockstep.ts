@@ -155,6 +155,11 @@ export class Lockstep {
     this.tr.send(m);
   }
 
+  /** stop driving the sim but keep the transport open (used for rematches) */
+  release() {
+    this.onOther = null;
+  }
+
   destroy() {
     try {
       this.tr.send({ k: 'bye' });

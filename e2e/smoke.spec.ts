@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+test.afterEach(async ({ browser }) => {
+  // contexts we create by hand are not auto-closed — stop their game loops so tests do not starve each other
+  for (const c of browser.contexts()) await c.close();
+});
+
 test('solo: menu → game → screenshots', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));

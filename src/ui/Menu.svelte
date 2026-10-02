@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app, hostRoom, joinRoom, setDifficulty, setLang, setMusicOn, setName, setRelay, setVol, startSolo, tr, trList } from '../lib/app.svelte';
+  import { app, hostRoom, joinRoom, manualStart, setDifficulty, setLang, setCompat, setMusicOn, setName, setVol, startSolo, tr, trList } from '../lib/app.svelte';
   import type { Difficulty } from '../sim/types';
 
   let panel = $state<'main' | 'ai' | 'friend' | 'howto' | 'settings' | 'about'>('main');
@@ -50,6 +50,11 @@
             onkeydown={(e) => e.key === 'Enter' && joinRoom(code)} />
           <button class="btn" disabled={code.trim().length < 4} onclick={() => joinRoom(code)}>{tr('join')}</button>
         </div>
+        <div class="flex items-center gap-2 text-slate-400 text-xs"><hr class="flex-1 border-slate-600" />{tr('manualTitle')}<hr class="flex-1 border-slate-600" /></div>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="btn btn-ghost text-sm" onclick={() => manualStart('host')}>{tr('manualHost')}</button>
+          <button class="btn btn-ghost text-sm" onclick={() => manualStart('guest')}>{tr('manualGuest')}</button>
+        </div>
         <button class="btn btn-ghost" onclick={() => (panel = 'main')}>← {tr('back')}</button>
       {:else if panel === 'howto'}
         <ul class="flex flex-col gap-3 text-sm leading-relaxed">
@@ -63,9 +68,10 @@
         <label class="flex items-center justify-between gap-4"><span class="font-semibold">{tr('volume')}</span>
           <input type="range" min="0" max="1" step="0.05" class="flex-1 accent-amber-400" value={app.volume} oninput={(e) => setVol(Number(e.currentTarget.value))} /></label>
         <label class="flex items-center justify-between"><span class="font-semibold">{tr('music')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.music} onchange={(e) => setMusicOn(e.currentTarget.checked)} /></label>
-        <div><div class="font-semibold mb-1">{tr('relay')}</div>
-          <div class="grid grid-cols-3 gap-2">{#each ['nostr', 'torrent', 'mqtt'] as r}<button class="btn text-sm {app.relay === r ? 'btn-primary' : ''}" onclick={() => setRelay(r as never)}>{r}</button>{/each}</div>
-          <p class="text-xs text-slate-400 mt-1">{tr('relayHint')}</p></div>
+        <div>
+          <label class="flex items-center justify-between"><span class="font-semibold">{tr('compat')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.compat} onchange={(e) => setCompat(e.currentTarget.checked)} /></label>
+          <p class="text-xs text-slate-400 mt-1">{tr('compatHint')}</p>
+        </div>
         <button class="btn btn-ghost" onclick={goFull}>⛶ {tr('fullscreen')}</button>
         <button class="btn btn-ghost" onclick={() => (panel = 'main')}>← {tr('back')}</button>
       {:else}

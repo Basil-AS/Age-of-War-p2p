@@ -4,8 +4,17 @@ let master: GainNode | null = null;
 let volume = 0.6;
 let muted = false;
 
+let unlocked = false;
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    unlocked = true;
+    for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.removeEventListener(ev, unlock);
+  };
+  for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, unlock, { passive: true });
+}
+
 function ac(): AudioContext | null {
-  if (muted) return null;
+  if (muted || !unlocked) return null;
   if (!ctx) {
     try {
       ctx = new AudioContext();

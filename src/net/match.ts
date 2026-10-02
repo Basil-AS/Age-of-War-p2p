@@ -19,6 +19,8 @@ export interface Match {
   update(now: number): void;
   onOther: ((m: Msg) => void) | null;
   send(m: Msg): void;
+  /** hand the transport over to a successor match without closing it */
+  release?(): void;
   destroy(): void;
 }
 
@@ -93,6 +95,9 @@ export class OnlineMatch implements Match {
   }
   send(m: Msg) {
     this.ls.send(m);
+  }
+  release() {
+    this.ls.release();
   }
   destroy() {
     this.ls.destroy();

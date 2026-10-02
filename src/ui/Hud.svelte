@@ -1,7 +1,9 @@
 <script lang="ts">
   import { app, ageName, buySlot, buyTurret, buyUnit, cancelQueue, evolve, fmt, freeSlotIndex, sellSlot, setInsets, special, specialName, toggleMenu, tr, turretName, unitName } from '../lib/app.svelte';
+  import { VIA_NAMES } from '../lib/i18n';
   import { TURRETS } from '../sim/data';
 
+  const viaKind = (v: string) => (v === 'turn' ? 'turn' : v === 'local' ? 'local' : v.startsWith('relay') ? 'relay' : 'direct');
   let top = $state<HTMLElement>();
   let bottom = $state<HTMLElement>();
   $effect(() => {
@@ -52,7 +54,8 @@
 
     <div class="flex-1 flex flex-col items-center gap-1 pointer-events-none">
       <div class="glass rounded-full px-3 py-1 text-xs sm:text-sm font-bold tabular-nums">{mm}
-        {#if app.net.online}<span class="ml-2 {app.net.rtt > 200 ? 'text-rose-400' : 'text-emerald-400'}">● {app.net.rtt}ms</span>{/if}
+        {#if app.net.online}<span class="ml-2 {app.net.rtt > 200 ? 'text-rose-400' : 'text-emerald-400'}">● {app.net.rtt}ms</span>
+          <span class="ml-1 text-[10px] font-semibold text-slate-400 short:hidden" data-testid="via">{VIA_NAMES[app.lang][viaKind(app.net.via)]}</span>{/if}
       </div>
       {#if app.net.stalled}<div class="glass rounded-full px-3 py-1 text-xs text-amber-300 animate-pulse">{tr('waitingOpp')}</div>{/if}
     </div>

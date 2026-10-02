@@ -19,6 +19,8 @@ export interface Transport {
   onLeave: (() => void) | null;
   /** true once the remote peer is connected */
   connected: boolean;
+  /** how this channel reaches the peer (shown in the UI) */
+  kind?: 'webrtc' | 'direct' | 'relay' | 'local';
   close(): void;
 }
 

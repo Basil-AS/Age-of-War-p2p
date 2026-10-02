@@ -83,6 +83,53 @@ export const SPECIAL_NAMES: Record<Lang, string[]> = {
   ru: ['Метеоритный дождь', 'Град стрел', 'Исцеляющая аура', 'Бомбардировка', 'Орбитальные лазеры'],
 };
 
+export const ROUTE_NAMES: Record<Lang, Record<string, string>> = {
+  en: {
+    nostr: 'Direct P2P · route A',
+    torrent: 'Direct P2P · route B',
+    mqtt: 'Direct P2P · route C',
+    turn: 'P2P through TURN relay',
+    'relay-nostr': 'Relay servers · Nostr',
+    'relay-mqtt': 'Relay servers · MQTT',
+    'relay-ws': 'Relay · own server',
+    local: 'Same device',
+    manual: 'Manual codes',
+  },
+  ru: {
+    nostr: 'Прямой P2P · маршрут A',
+    torrent: 'Прямой P2P · маршрут B',
+    mqtt: 'Прямой P2P · маршрут C',
+    turn: 'P2P через TURN-ретранслятор',
+    'relay-nostr': 'Через серверы · Nostr',
+    'relay-mqtt': 'Через серверы · MQTT',
+    'relay-ws': 'Через свой сервер',
+    local: 'Одно устройство',
+    manual: 'Ручной обмен кодами',
+  },
+};
+export const STATUS_NAMES: Record<Lang, Record<string, string>> = {
+  en: {
+    waiting: 'queued',
+    trying: 'trying…',
+    slow: 'still trying…',
+    connected: 'connected',
+    failed: 'unavailable',
+    closed: 'not needed',
+  },
+  ru: {
+    waiting: 'в очереди',
+    trying: 'пробуем…',
+    slow: 'всё ещё пробуем…',
+    connected: 'соединено',
+    failed: 'недоступно',
+    closed: 'не нужен',
+  },
+};
+export const VIA_NAMES: Record<Lang, Record<string, string>> = {
+  en: { direct: 'direct P2P', turn: 'via TURN', relay: 'via relay', local: 'same device' },
+  ru: { direct: 'напрямую P2P', turn: 'через TURN', relay: 'через сервер', local: 'одно устройство' },
+};
+
 const en = {
   title: 'AGE OF WAR',
   sub: 'P2P — duel your friend, no server',
@@ -111,7 +158,7 @@ const en = {
   connected: 'Connected! Starting…',
   relay: 'Connection route',
   relayHint: 'If friends cannot connect, both switch the route.',
-  lobbyTimeout: 'Still no one? Check the code, or try another route (both players must pick the same).',
+  lobbyTimeout: 'Still nothing? Check the code. Every route is being tried — or use the no-server mode below.',
   gold: 'Gold',
   xp: 'XP',
   evolve: 'Evolve',
@@ -166,6 +213,24 @@ const en = {
     'An open-source remake of the classic Flash game "Age of War". All art is drawn procedurally; balance numbers follow the original. Built with Vite, Svelte 5, PixiJS 8, Trystero (WebRTC) and a deterministic lockstep engine.',
   tip: 'Tip',
   rotate: 'Rotate your phone to landscape',
+  routes: 'Connection routes',
+  routesHint: 'Tried automatically, best first. The first one that works is used.',
+  manualTitle: 'No-server mode',
+  manualDesc: 'Swap two codes through any messenger. Nothing but your two browsers is involved.',
+  manualHost: 'I am the host',
+  manualGuest: 'I am the guest',
+  manualCopyOffer: '1. Send this code to your friend',
+  manualPasteAnswer: "2. Paste your friend's reply code",
+  manualPasteOffer: "1. Paste the host's code",
+  manualShowAnswer: '2. Send this reply code back to the host',
+  manualConnect: 'Connect',
+  badCode: 'That code does not look right',
+  manualConnecting: 'Connecting…',
+  preparing: 'Preparing…',
+  compat: 'Compatibility mode (skip WebRTC)',
+  compatHint:
+    'Use it if your network or browser blocks WebRTC. The game then flows through relay servers (a little more lag).',
+  tryManual: 'Nothing works? Try the no-server mode',
 };
 const ru: typeof en = {
   title: 'AGE OF WAR',
@@ -195,7 +260,7 @@ const ru: typeof en = {
   connected: 'Соединено! Начинаем…',
   relay: 'Маршрут соединения',
   relayHint: 'Если не подключается — оба выберите другой маршрут.',
-  lobbyTimeout: 'Никого нет? Проверьте код или смените маршрут (у обоих игроков он должен совпадать).',
+  lobbyTimeout: 'Пока ничего? Проверьте код. Пробуются все маршруты — или используйте режим без сервера ниже.',
   gold: 'Золото',
   xp: 'Опыт',
   evolve: 'Эволюция',
@@ -250,6 +315,24 @@ const ru: typeof en = {
     'Открытый ремейк классической Flash-игры «Age of War». Вся графика рисуется кодом; цифры баланса — как в оригинале. Сделано на Vite, Svelte 5, PixiJS 8, Trystero (WebRTC) и детерминированном lockstep-движке.',
   tip: 'Совет',
   rotate: 'Поверните телефон горизонтально',
+  routes: 'Маршруты соединения',
+  routesHint: 'Пробуются автоматически, лучшие первыми. Используется первый, который сработал.',
+  manualTitle: 'Режим без сервера',
+  manualDesc: 'Обменяйтесь двумя кодами через любой мессенджер. Участвуют только ваши два браузера.',
+  manualHost: 'Я хост',
+  manualGuest: 'Я гость',
+  manualCopyOffer: '1. Отправьте этот код другу',
+  manualPasteAnswer: '2. Вставьте ответный код друга',
+  manualPasteOffer: '1. Вставьте код хоста',
+  manualShowAnswer: '2. Отправьте этот ответный код хосту',
+  manualConnect: 'Соединить',
+  badCode: 'Код не подходит',
+  manualConnecting: 'Соединяемся…',
+  preparing: 'Готовим…',
+  compat: 'Режим совместимости (без WebRTC)',
+  compatHint:
+    'Включите, если сеть или браузер блокируют WebRTC. Игра пойдёт через серверы-ретрансляторы (чуть больше задержка).',
+  tryManual: 'Ничего не работает? Попробуйте режим без сервера',
 };
 export const STRINGS = { en, ru };
 export type Key = keyof typeof en;
