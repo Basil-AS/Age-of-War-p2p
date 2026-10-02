@@ -288,3 +288,16 @@ test('Space pauses with a visible pause menu and Space resumes', async ({ page }
   await expect(page.getByTestId('pause-menu')).toBeHidden();
   await expect.poll(() => g(page, (a) => a.app.paused)).toBe(false);
 });
+
+test('uhd art tier loads and plays (?q=uhd)', async ({ page }) => {
+  const errs: string[] = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  await startSolo(page, '/original.html?q=uhd');
+  expect(await g(page, (a) => a.orig!.assets.quality)).toBe('uhd');
+  await g(page, (a) => {
+    a.match!.sim.player(1).cash = 100000;
+  });
+  await page.getByTestId('unit-1').click();
+  await page.waitForTimeout(2500);
+  expect(errs).toEqual([]);
+});

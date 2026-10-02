@@ -11,7 +11,7 @@ type Manifest = {
   frames: Record<string, Frame>;
 };
 
-for (const q of ['hd', 'sd'] as const) {
+for (const q of ['uhd', 'hd', 'sd'] as const) {
   describe(`${q} atlases`, () => {
     const m = JSON.parse(readFileSync(`public/orig/${q}/manifest.json`, 'utf8')) as Manifest;
     it('every atlas file exists, has the byte size and pixel size in the manifest', async () => {
