@@ -1,4 +1,4 @@
-import type { Cmd } from '../sim/types';
+import type { Cmd } from '../orig/types';
 
 /** Everything that crosses the wire. Tiny JSON — a whole match is a few KB. */
 export type Msg =
