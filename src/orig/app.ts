@@ -61,7 +61,7 @@ export class OrigApp {
     await this.flash.loadFonts();
     this.audio = new OrigAudio((id) => this.assets.snd(id));
     await this.assets.loadBucket('e1');
-    void this.assets.loadBucket('e2'); // the next era streams in behind the title screen
+    // the next era streams in once a match starts (prefetchEras), not before the title is up
     this.app.stage.addChild(this.root);
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = new Rectangle(-5000, -5000, 10000, 10000);
