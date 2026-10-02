@@ -50,7 +50,7 @@ export class OrigApp {
       resizeTo: window,
       antialias: true,
       background: 0x000000,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      resolution: pickResolution(),
       autoDensity: true,
       preference: opts.webgpu ? 'webgpu' : 'webgl',
     });
@@ -63,7 +63,10 @@ export class OrigApp {
     this.app.stage.addChild(this.root);
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = new Rectangle(-5000, -5000, 10000, 10000);
-    window.addEventListener('resize', () => this.layout());
+    window.addEventListener('resize', () => {
+      this.app.renderer.resolution = pickResolution();
+      this.layout();
+    });
     window.addEventListener('keydown', this.keyHandler);
     this.layout();
     this.showTitle();
@@ -255,4 +258,11 @@ export class OrigApp {
     this.clear();
     this.app.destroy(false, { children: true });
   }
+}
+
+/** sharp on HiDPI screens, but never more than ~9 megapixels of canvas (keeps phones/laptops smooth) */
+function pickResolution(): number {
+  const dpr = window.devicePixelRatio || 1;
+  const px = window.innerWidth * window.innerHeight;
+  return Math.max(1, Math.min(dpr, 3, Math.sqrt(9_000_000 / Math.max(1, px))));
 }

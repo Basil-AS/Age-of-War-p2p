@@ -9,13 +9,16 @@ import { writeFileSync } from 'node:fs';
 
 const SWF = process.env.AOW_SWF || '/home/user/erupturatis/decompiled-flash-games-archive/Games/age of war/Age_Of_War.swf';
 const OUT = process.argv[2] || 'public/orig';
+// hi-res: AOW_SCALE=3 AOW_HI=<ffdec sprite export made with -zoom 3> (see docs/ASSETS.md)
+const S = Number(process.env.AOW_SCALE || 1);
+const SPR_DIR = process.env.AOW_HI || `${GAME_DIR}/sprites`;
 const swf = parseSwf(SWF);
 const { spriteBounds, charBounds } = makeBounds(swf);
-const sdirs = readdirSync(`${GAME_DIR}/sprites`);
+const sdirs = readdirSync(SPR_DIR);
 const spriteDir = (id) => sdirs.find((d) => d === `DefineSprite_${id}` || d.startsWith(`DefineSprite_${id}_`));
 import { mkdirSync } from 'node:fs';
 mkdirSync(OUT, { recursive: true });
-const packer = new Packer(OUT, { lossy: process.env.LOSSLESS ? false : true });
+const packer = new Packer(OUT, { pad: S > 1 ? 4 : 2, lossy: process.env.LOSSLESS ? false : true, scale: S, size: Number(process.env.AOW_ATLAS || 2048), quality: Number(process.env.AOW_Q || 92) });
 const era = (u) => (u >= 16 ? 5 : Math.ceil(u / 3));
 
 export const spriteKey = (id, f) => `s${id}.${f}`;
@@ -23,7 +26,7 @@ export const shapeKey = (id) => `h${id}`;
 
 function addSprite(id, f, bucket) {
   const d = spriteDir(id); if (!d) return false;
-  const file = `${GAME_DIR}/sprites/${d}/${f}.png`; if (!existsSync(file)) return false;
+  const file = `${SPR_DIR}/${d}/${f}.png`; if (!existsSync(file)) return false;
   const b = spriteBounds(id) || { x0: 0, y0: 0 };
   packer.add(spriteKey(id, f), bucket, async () => readFileSync(file), b.x0, b.y0);
   return true;
@@ -32,7 +35,7 @@ function addAllFrames(id, bucket) { const s = swf.sprites[id]; if (!s) return; f
 function addShape(id, bucket) {
   const file = `${GAME_DIR}/shapes/${id}.svg`; if (!existsSync(file)) return false;
   const b = swf.chars[id].bounds;
-  packer.add(shapeKey(id), bucket, async () => sharp(readFileSync(file), { density: 72 }).png().toBuffer(), b.x0, b.y0);
+  packer.add(shapeKey(id), bucket, async () => sharp(readFileSync(file), { density: 72 * S }).png().toBuffer(), b.x0, b.y0);
   return true;
 }
 /** add a character of any kind (sprite flat frames or shape) */

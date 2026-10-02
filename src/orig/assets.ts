@@ -12,6 +12,8 @@ export interface FrameInfo {
 }
 interface Manifest {
   size: number;
+  /** atlas pixels per stage pixel (3 = rendered at 3× for sharp scaling) */
+  scale?: number;
   atlases: { file: string; bucket: string; w: number; h: number; bytes: number }[];
   frames: Record<string, FrameInfo>;
 }
@@ -54,7 +56,7 @@ export class OrigAssets {
     if (!p) {
       p = Assets.load<Texture>({
         src: this.base + (this.manifest.atlases[i] as { file: string }).file,
-        data: { scaleMode: 'linear' },
+        data: { scaleMode: 'linear', autoGenerateMipmaps: true },
       });
       this.atlasTex.set(i, p);
     }
@@ -70,7 +72,13 @@ export class OrigAssets {
     if (!t) {
       const atlas = this.atlasTexSync(f.a);
       if (!atlas) return null;
-      t = new Texture({ source: atlas.source, frame: new Rectangle(f.x, f.y, f.w, f.h) });
+      // hi-res atlases: the texture keeps its original (stage-pixel) size via `orig`, so sprites need no rescaling
+      const k = this.manifest.scale ?? 1;
+      t = new Texture({
+        source: atlas.source,
+        frame: new Rectangle(f.x, f.y, f.w, f.h),
+        orig: new Rectangle(0, 0, f.w / k, f.h / k),
+      });
       this.tex.set(key, t);
     }
     return { tex: t, ox: f.ox, oy: f.oy };

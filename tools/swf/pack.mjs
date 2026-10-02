@@ -6,8 +6,8 @@ import sharp from 'sharp';
  * into per-bucket texture atlases so the game can lazy-load by era.
  */
 export class Packer {
-  constructor(outDir, { size = 2048, pad = 2, lossy = true, quality = 92 } = {}) {
-    this.out = outDir; this.size = size; this.pad = pad; this.lossy = lossy; this.quality = quality;
+  constructor(outDir, { size = 2048, pad = 2, lossy = true, quality = 92, scale = 1 } = {}) {
+    this.out = outDir; this.scale = scale; this.size = size; this.pad = pad; this.lossy = lossy; this.quality = quality;
     this.items = new Map(); // key -> { bucket, loader(), ox, oy }
   }
   add(key, bucket, loader, ox, oy) { if (!this.items.has(key)) this.items.set(key, { bucket, loader, ox, oy }); }
@@ -25,10 +25,10 @@ export class Packer {
       if (x1 < 0) { (buckets.get(it.bucket) ?? buckets.set(it.bucket, []).get(it.bucket)).push({ key, empty: true, ox: it.ox, oy: it.oy }); continue; }
       const w = x1 - x0 + 1, h = y1 - y0 + 1;
       const crop = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).extract({ left: x0, top: y0, width: w, height: h }).raw().toBuffer();
-      (buckets.get(it.bucket) ?? buckets.set(it.bucket, []).get(it.bucket)).push({ key, w, h, crop, ox: it.ox + x0, oy: it.oy + y0 });
+      (buckets.get(it.bucket) ?? buckets.set(it.bucket, []).get(it.bucket)).push({ key, w, h, crop, ox: it.ox + x0 / this.scale, oy: it.oy + y0 / this.scale });
       if (++n % 500 === 0) console.log('  trimmed', n);
     }
-    const manifest = { size: this.size, atlases: [], frames: {} };
+    const manifest = { size: this.size, scale: this.scale, atlases: [], frames: {} };
     for (const [bucket, list] of buckets) {
       const items = list.filter((i) => !i.empty);
       for (const e of list.filter((i) => i.empty)) manifest.frames[e.key] = { a: -1, x: 0, y: 0, w: 0, h: 0, ox: e.ox, oy: e.oy };

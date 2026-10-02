@@ -39,3 +39,7 @@ input.field:focus { border-color: #fbbf24; }
 
 .rotate-hint { display: none; }
 @media (orientation: portrait) and (max-width: 700px) { .rotate-hint { display: grid; } }
+
+@media (orientation: portrait) and (max-width: 700px) {
+  .rotate-hint { display: grid; }
+}

@@ -15,6 +15,7 @@
 </script>
 
 <canvas id="stage" bind:this={canvas}></canvas>
+<div class="rotate-hint fixed inset-0 z-50 hidden place-items-center bg-black/85 text-center p-8 text-amber-200 text-xl font-bold">📱↻<br />{tr('rotate')}</div>
 
 {#if app.loadError}
   <div class="fixed inset-0 grid place-items-center p-6 text-center bg-black text-rose-300">{app.loadError}</div>
