@@ -55,31 +55,50 @@ export class Sim {
   }
 
   // ───────────────────────── commands ─────────────────────────
-  apply(side: Side, c: Cmd): boolean {
+  /** Pure validation — the UI uses it to grey out buttons, `apply` uses it as the single source of truth. */
+  can(side: Side, c: Cmd): boolean {
     const p = this.players[side];
     switch (c.t) {
       case 'buy': {
         const u = UNITS[c.u];
         if (!u || (u.tier === 3 ? p.age !== 4 : u.age !== p.age)) return false;
         if (p.queue.length >= MAX_QUEUE) return false;
-        if (this.aliveCount(side) + p.queue.length >= MAX_ALIVE) return false;
-        if (u.tier === 3 && this.aliveCount(side) + p.queue.length >= 3) return false;
-        if (!p.free && p.gold < u.cost) return false;
+        const total = this.aliveCount(side) + p.queue.length;
+        if (total >= MAX_ALIVE) return false;
+        if (u.tier === 3 && total >= 3) return false;
+        return p.free || p.gold >= u.cost;
+      }
+      case 'cancel': return !!p.queue[c.i];
+      case 'turret': {
+        const t = TURRETS[c.id];
+        if (!t || t.age !== p.age || c.slot < 0 || c.slot >= p.slots || p.turrets[c.slot] !== null) return false;
+        return p.free || p.gold >= t.cost;
+      }
+      case 'sell': return p.turrets[c.slot] !== null && p.turrets[c.slot] !== undefined;
+      case 'slot': return p.slots < 4 && (p.free || p.gold >= (SLOT_COST[p.slots - 1] as number));
+      case 'evolve': return p.age < 4 && (p.free || p.xp >= (XP_TO_EVOLVE[p.age] as number));
+      case 'special': return p.specialCd <= 0;
+    }
+  }
+
+  apply(side: Side, c: Cmd): boolean {
+    if (!this.can(side, c)) return false;
+    const p = this.players[side];
+    switch (c.t) {
+      case 'buy': {
+        const u = UNITS[c.u] as (typeof UNITS)[number];
         if (!p.free) p.gold -= u.cost;
         p.queue.push({ def: u.id, left: u.train, total: u.train });
         return true;
       }
       case 'cancel': {
-        const it = p.queue[c.i];
-        if (!it) return false;
+        const it = p.queue[c.i] as { def: number };
         if (!p.free) p.gold += (UNITS[it.def] as { cost: number }).cost;
         p.queue.splice(c.i, 1);
         return true;
       }
       case 'turret': {
-        const t = TURRETS[c.id];
-        if (!t || t.age !== p.age || c.slot < 0 || c.slot >= p.slots || p.turrets[c.slot] !== null) return false;
-        if (!p.free && p.gold < t.cost) return false;
+        const t = TURRETS[c.id] as (typeof TURRETS)[number];
         if (!p.free) p.gold -= t.cost;
         p.turrets[c.slot] = t.id;
         p.turretCd[c.slot] = -1;
@@ -87,23 +106,18 @@ export class Sim {
         return true;
       }
       case 'sell': {
-        const id = p.turrets[c.slot];
-        if (id === null || id === undefined) return false;
+        const id = p.turrets[c.slot] as number;
         if (!p.free) p.gold += Math.floor((TURRETS[id] as { cost: number }).cost * TURRET_SELL_RATIO);
         p.turrets[c.slot] = null;
         this.ev({ k: 'turret', side, slot: c.slot, id: null });
         return true;
       }
       case 'slot': {
-        if (p.slots >= 4) return false;
-        const cost = SLOT_COST[p.slots - 1] as number;
-        if (!p.free && p.gold < cost) return false;
-        if (!p.free) p.gold -= cost;
+        if (!p.free) p.gold -= SLOT_COST[p.slots - 1] as number;
         p.slots++;
         return true;
       }
       case 'evolve': {
-        if (p.age >= 4 || (!p.free && p.xp < (XP_TO_EVOLVE[p.age] as number))) return false;
         const add = (BASE_HP[p.age + 1] as number) - (BASE_HP[p.age] as number);
         p.age++;
         p.baseHp += add;
@@ -113,12 +127,11 @@ export class Sim {
         return true;
       }
       case 'special': {
-        if (p.specialCd > 0) return false;
         p.specialCd = SPECIAL_COOLDOWN;
         const sd = SPECIALS[p.age] as (typeof SPECIALS)[number];
         if (sd.kind === 'heal') for (const t of this.lanes[side]) t.regenUntil = this.tick + (sd.duration as number);
         else this.specials.push({ side, age: p.age, start: this.tick, fired: 0 });
-        this.ev({ k: 'special', side, kind: (SPECIALS[p.age] as { kind: string }).kind, x: 0, dmg: 0, hit: false, idx: -1 });
+        this.ev({ k: 'special', side, kind: sd.kind, x: 0, dmg: 0, hit: false, idx: -1 });
         return true;
       }
     }

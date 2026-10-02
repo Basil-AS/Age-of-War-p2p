@@ -1,0 +1,81 @@
+export type Lang = 'ru' | 'en';
+
+export const UNIT_NAMES: Record<Lang, string[]> = {
+  en: ['Clubman', 'Slingshot', 'Dino Rider', 'Swordsman', 'Archer', 'Knight', 'Duelist', 'Musketeer', 'Cannoneer', 'Infantry', 'Gunner', 'Tank', 'God Blade', 'Blaster', 'War Machine', 'Super Soldier'],
+  ru: ['Дубинщик', 'Пращник', 'Всадник на динозавре', 'Мечник', 'Лучник', 'Рыцарь', 'Дуэлянт', 'Мушкетёр', 'Канонир', 'Пехотинец', 'Стрелок', 'Танк', 'Божественный клинок', 'Бластерщик', 'Боевая машина', 'Суперсолдат'],
+};
+export const TURRET_NAMES: Record<Lang, string[]> = {
+  en: ['Rock Slingshot', 'Egg Automatic', 'Primitive Catapult', 'Catapult', 'Fire Catapult', 'Oil Thrower', 'Small Cannon', 'Medium Cannon', 'Big Cannon', 'Gun', 'Rocket Launcher', 'Double Gun', 'Laser', 'Red Blaster', 'Blue Blaster'],
+  ru: ['Пращ-башня', 'Яйцемёт', 'Примитивная катапульта', 'Катапульта', 'Огненная катапульта', 'Масляный метатель', 'Малая пушка', 'Средняя пушка', 'Большая пушка', 'Пулемёт', 'Ракетница', 'Спаренный пулемёт', 'Лазер', 'Красный бластер', 'Синий бластер'],
+};
+export const AGE_NAMES: Record<Lang, string[]> = {
+  en: ['Stone Age', 'Castle Age', 'Renaissance', 'Modern Age', 'Future'],
+  ru: ['Каменный век', 'Средневековье', 'Ренессанс', 'Современность', 'Будущее'],
+};
+export const SPECIAL_NAMES: Record<Lang, string[]> = {
+  en: ['Meteor Shower', 'Arrow Rain', 'Healing Aura', 'Bombing Run', 'Orbital Lasers'],
+  ru: ['Метеоритный дождь', 'Град стрел', 'Исцеляющая аура', 'Бомбардировка', 'Орбитальные лазеры'],
+};
+
+const en = {
+  title: 'AGE OF WAR', sub: 'P2P — duel your friend, no server',
+  playAi: 'Play vs AI', playFriend: 'Play with a friend', howTo: 'How to play', settings: 'Settings', about: 'About',
+  difficulty: 'Difficulty', easy: 'Easy', normal: 'Normal (classic)', hard: 'Hard', insane: 'Insane', start: 'Start',
+  createRoom: 'Create room', joinRoom: 'Join room', roomCode: 'Room code', join: 'Join', back: 'Back',
+  yourName: 'Your name', share: 'Send this link to your friend', copy: 'Copy', copied: 'Copied!', waiting: 'Waiting for your friend…',
+  connecting: 'Connecting…', connected: 'Connected! Starting…', relay: 'Connection route', relayHint: 'If friends cannot connect, both switch the route.',
+  lobbyTimeout: 'Still no one? Check the code, or try another route (both players must pick the same).',
+  gold: 'Gold', xp: 'XP', evolve: 'Evolve', special: 'Special', turrets: 'Turrets', units: 'Units', queue: 'Training',
+  buySlot: 'Buy slot', sell: 'Sell', free: 'free', locked: 'locked', max: 'MAX',
+  victory: 'VICTORY', defeat: 'DEFEAT', draw: 'DRAW', rematch: 'Rematch', menu: 'Menu', resume: 'Resume', leave: 'Leave match',
+  waitingOpp: 'Waiting for opponent…', desync: 'Desync detected — the match is no longer reliable', peerLeft: 'Your friend left the match',
+  ping: 'ping', time: 'Time', kills: 'Kills', reachedAge: 'Reached', rematchWait: 'Waiting for friend…', rematchAsk: 'Friend wants a rematch!',
+  language: 'Language', volume: 'Sound', speed: 'Game speed', fullscreen: 'Fullscreen', install: 'Install as app',
+  evolved: 'EVOLVED!', enemyEvolved: 'Enemy evolved!', youCast: 'You cast', enemyCast: 'Enemy casts',
+  hotkeys: 'Hotkeys', hk1: '1–4 train units', hk2: 'Q W E build turret', hk3: 'R buy slot · F sell', hk4: 'Space special · Enter evolve',
+  howToText: [
+    'Train units — they march along the lane and fight the first enemy they meet. Destroy the enemy base to win.',
+    'Every kill gives gold and XP. Gold buys units and turrets; XP evolves you to the next age with stronger units, bases and a new special attack.',
+    'Turrets guard your base. Buy extra slots (up to 4) and sell old turrets for half price when you evolve.',
+    'The special attack recharges in 60 seconds: meteors, arrows, healing, bombs or orbital lasers.',
+    'Play a friend: create a room, send the link — the game connects both browsers directly (peer-to-peer). No server, no account.',
+  ],
+  aboutText: 'An open-source remake of the classic Flash game "Age of War". All art is drawn procedurally; balance numbers follow the original. Built with Vite, Svelte 5, PixiJS 8, Trystero (WebRTC) and a deterministic lockstep engine.',
+  tip: 'Tip',
+};
+const ru: typeof en = {
+  title: 'AGE OF WAR', sub: 'P2P — дуэль с другом, без сервера',
+  playAi: 'Игра против ИИ', playFriend: 'Игра с другом', howTo: 'Как играть', settings: 'Настройки', about: 'Об игре',
+  difficulty: 'Сложность', easy: 'Лёгкая', normal: 'Обычная (классика)', hard: 'Сложная', insane: 'Безумная', start: 'Старт',
+  createRoom: 'Создать комнату', joinRoom: 'Войти в комнату', roomCode: 'Код комнаты', join: 'Войти', back: 'Назад',
+  yourName: 'Ваше имя', share: 'Отправьте эту ссылку другу', copy: 'Копировать', copied: 'Скопировано!', waiting: 'Ждём друга…',
+  connecting: 'Подключаемся…', connected: 'Соединено! Начинаем…', relay: 'Маршрут соединения', relayHint: 'Если не подключается — оба выберите другой маршрут.',
+  lobbyTimeout: 'Никого нет? Проверьте код или смените маршрут (у обоих игроков он должен совпадать).',
+  gold: 'Золото', xp: 'Опыт', evolve: 'Эволюция', special: 'Спецудар', turrets: 'Башни', units: 'Войска', queue: 'Обучение',
+  buySlot: 'Купить слот', sell: 'Продать', free: 'свободно', locked: 'закрыто', max: 'MAX',
+  victory: 'ПОБЕДА', defeat: 'ПОРАЖЕНИЕ', draw: 'НИЧЬЯ', rematch: 'Реванш', menu: 'Меню', resume: 'Продолжить', leave: 'Покинуть матч',
+  waitingOpp: 'Ждём соперника…', desync: 'Рассинхронизация — матч больше не надёжен', peerLeft: 'Друг покинул матч',
+  ping: 'пинг', time: 'Время', kills: 'Убийств', reachedAge: 'Достигнут', rematchWait: 'Ждём друга…', rematchAsk: 'Друг хочет реванш!',
+  language: 'Язык', volume: 'Звук', speed: 'Скорость игры', fullscreen: 'Во весь экран', install: 'Установить как приложение',
+  evolved: 'ЭВОЛЮЦИЯ!', enemyEvolved: 'Враг эволюционировал!', youCast: 'Вы применили', enemyCast: 'Враг применил',
+  hotkeys: 'Горячие клавиши', hk1: '1–4 нанять юнитов', hk2: 'Q W E построить башню', hk3: 'R купить слот · F продать', hk4: 'Пробел спецудар · Enter эволюция',
+  howToText: [
+    'Нанимайте юнитов — они идут по полю и сражаются с первым встречным врагом. Разрушьте базу противника, чтобы победить.',
+    'За каждое убийство — золото и опыт. На золото покупают войска и башни; опыт открывает следующую эпоху: новые юниты, база и спецудар.',
+    'Башни защищают базу. Докупайте слоты (до 4) и продавайте старые башни за полцены при смене эпохи.',
+    'Спецудар перезаряжается 60 секунд: метеориты, стрелы, исцеление, бомбы или орбитальные лазеры.',
+    'Игра с другом: создайте комнату и отправьте ссылку — браузеры соединяются напрямую (peer-to-peer). Без сервера и регистрации.',
+  ],
+  aboutText: 'Открытый ремейк классической Flash-игры «Age of War». Вся графика рисуется кодом; цифры баланса — как в оригинале. Сделано на Vite, Svelte 5, PixiJS 8, Trystero (WebRTC) и детерминированном lockstep-движке.',
+  tip: 'Совет',
+};
+export const STRINGS = { en, ru };
+export type Key = keyof typeof en;
+
+export function detectLang(): Lang {
+  try {
+    const s = localStorage.getItem('aow.lang');
+    if (s === 'ru' || s === 'en') return s;
+  } catch { /* storage blocked */ }
+  return navigator.language?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+}

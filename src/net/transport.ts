@@ -3,7 +3,7 @@ import type { Cmd } from '../sim/types';
 /** Everything that crosses the wire. Tiny JSON — a whole match is a few KB. */
 export type Msg =
   | { k: 'hello'; name: string }
-  | { k: 'init'; seed: number; delay: number; hostName: string; ai?: undefined }
+  | { k: 'init'; seed: number; delay: number; hostName: string }
   | { k: 'turn'; n: number; cmds: Cmd[]; hn?: number; h?: number }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
