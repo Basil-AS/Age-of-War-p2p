@@ -233,3 +233,44 @@ test('motion is interpolated between simulation ticks (units, flying shots) at a
   for (let i = 1; i < r.length; i++) expect(r[i] as number).toBeGreaterThanOrEqual(r[i - 1] as number);
   expect(r[4]! - r[0]!).toBeLessThan(2); // one tick = at most ~0.7 px for a walker, spread over the 5 samples
 });
+
+test('turret prices stay visible on a filled slot; Russian-layout keys work', async ({ page }) => {
+  await startSolo(page);
+  await g(page, (a) => {
+    a.match!.sim.player(1).cash = 100000;
+  });
+  await page.getByTestId('slot-1').click();
+  await page.getByTestId('buy-turret-1').click();
+  await expect.poll(() => g(page, (a) => a.app.hud?.slots[0]?.id ?? 0)).toBeGreaterThan(0);
+  await page.getByTestId('slot-1').click(); // filled slot → price list for all three turrets
+  await expect(page.getByTestId('price-turret-3')).toBeVisible();
+  await expect(page.getByTestId('price-turret-3')).toContainText(/\d/);
+  // physical key 'Digit1' with a Cyrillic key value still queues a unit
+  const q0 = await g(page, (a) => a.match!.sim.player(1).cash);
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit1', key: '1' })));
+  await expect.poll(() => g(page, (a) => a.match!.sim.player(1).cash)).toBeLessThan(q0);
+  const q1 = await g(page, (a) => a.match!.sim.player(1).cash);
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit2', key: '2' })));
+  await expect.poll(() => g(page, (a) => a.match!.sim.player(1).cash)).toBeLessThan(q1);
+});
+
+test('auto-pause on a hidden window can be turned off', async ({ page }) => {
+  await startSolo(page);
+  const hide = () =>
+    page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+  await g(page, (a) => a.orig!.autoPause === true);
+  await g(page, (a) => {
+    a.orig!.autoPause = false;
+  });
+  await hide();
+  await page.waitForTimeout(150);
+  expect(await g(page, (a) => a.app.paused)).toBe(false);
+  await g(page, (a) => {
+    a.orig!.autoPause = true;
+  });
+  await hide();
+  await expect.poll(() => g(page, (a) => a.app.paused)).toBe(true);
+});

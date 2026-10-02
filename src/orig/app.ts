@@ -1,5 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { startKeepAlive } from '../lib/keepalive';
+import { keyName } from '../lib/keys';
 import type { Match } from '../net/match';
 import { OrigAssets } from './assets';
 import { Flash } from './flash';
@@ -43,6 +44,8 @@ export class OrigApp {
   paused = false;
   private resultShown = false;
   private loadingBuckets = new Set<number>();
+  /** pause a solo game when the window is hidden (user setting) */
+  autoPause = true;
   private keyHandler = (e: KeyboardEvent) => this.onKey(e);
   private fit = 1;
   /** logical width of the visible world window (650 on 16:9 — the original proportions — up to 2000) */
@@ -92,7 +95,7 @@ export class OrigApp {
     this.bindPointer(canvas);
     // a solo game pauses by itself when the tab/app is backgrounded (online games keep running — the friend is waiting)
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.match && !this.match.online && !this.paused) this.setPaused(true);
+      if (this.autoPause && document.hidden && this.match && !this.match.online && !this.paused) this.setPaused(true);
     });
     this.layout();
     this.showTitle();
@@ -312,7 +315,7 @@ export class OrigApp {
 
   private onKey(e: KeyboardEvent) {
     if (!this.scene || e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
-    const k = e.key.toLowerCase();
+    const k = keyName(e);
     const sim = this.match?.sim,
       me = this.match?.side;
     if (!sim || !me) return;
@@ -337,7 +340,7 @@ export class OrigApp {
   }
 
   private onKeyUp(e: KeyboardEvent) {
-    const k = e.key.toLowerCase();
+    const k = keyName(e);
     if (k === 'arrowleft' || k === 'a' || k === 'arrowright' || k === 'd') this.scene?.setKeyDir(0);
   }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app, hostRoom, joinRoom, manualStart, setCompat, setLang, setMenu, setMusicOn, setMusicVol, setName, setSfx, setSmartAi, startSolo, tr, trList } from '../lib/app.svelte';
+  import { app, hostRoom, joinRoom, manualStart, setCompat, setLang, setMenu, setMusicOn, setMusicVol, setName, setSfx, setAutoPause, setSmartAi, startSolo, tr, trList } from '../lib/app.svelte';
   import LangSwitch from './LangSwitch.svelte';
   import NetCheck from './NetCheck.svelte';
   import VersionSwitch from './VersionSwitch.svelte';
@@ -87,6 +87,7 @@
         <label class="flex items-center justify-between"><span class="font-bold">{tr('compat')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.compat} onchange={(e) => setCompat(e.currentTarget.checked)} /></label>
         <p class="text-xs opacity-80 mt-1">{tr('compatHint')}</p>
       </div>
+      <label class="flex items-center justify-between"><span class="font-bold">{tr('autoPause')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.autoPause} onchange={(e) => setAutoPause(e.currentTarget.checked)} /></label>
       <button class="aw-btn wood small" onclick={goFull}>⛶ {tr('fullscreen')}</button>
       <button class="aw-btn wood small" onclick={() => setMenu('home')}>← {tr('back')}</button>
     {:else}

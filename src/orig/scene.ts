@@ -5,6 +5,7 @@ import { Particles } from './particles';
 import { type Bullet, type Frag, GROUND, type OrigSim, type TurretInst, type Unit, WORLD_W } from './sim';
 import { Smooth } from './smooth';
 import type { OrigAudio } from './snd';
+import { Tracers } from './tracers';
 import type { Cmd, Side, UnitData } from './types';
 
 const BULLET_SPRITE: Record<string, number> = {
@@ -186,6 +187,7 @@ export class GameScene extends Container {
   private unitsC = new Container();
   private partC: Particles;
   private fxC = new Container();
+  private tracers = new Tracers();
   private units = new Map<number, UnitView>();
   private turrets = new Map<TurretInst, TurretView>();
   private bullets = new Map<Bullet, Prop>();
@@ -241,7 +243,7 @@ export class GameScene extends Container {
       own.scale.x = -1;
       enemy.scale.x = -1;
     }
-    this.world.addChild(own, enemy, this.turretsC, this.bulletsC, this.unitsC, this.partC, this.fxC);
+    this.world.addChild(own, enemy, this.turretsC, this.bulletsC, this.unitsC, this.tracers, this.partC, this.fxC);
     this.unitsC.sortableChildren = true;
     this.cam.addChild(this.partC.overlay); // popups stay un-mirrored; Particles maps their x themselves
     // the base sprite carries the original build/sell buttons — the new HTML HUD replaces them
@@ -296,6 +298,7 @@ export class GameScene extends Container {
       v.holder.rotation = v.sm.r(a) * DEG;
     }
     for (const c of this.specialSprites.values()) c.box.position.set(c.sm.x(a), c.sm.y(a));
+    this.tracers.render(a);
   }
 
   setViewW(w: number) {
@@ -352,9 +355,11 @@ export class GameScene extends Container {
       if (e.k === 'part') this.partC.spawn(e.id, e.x, e.y, e.params);
       else if (e.k === 'snd') this.audio.play(e.id);
       else if (e.k === 'shake') this.shake = Math.max(this.shake, e.amount);
+      else if (e.k === 'shot') this.tracers.shoot(e.unit, e.x1, e.y1, e.x2, e.y2);
       else if (e.k === 'cash' && e.side === this.me) this.partC.cash(e.x, e.y, e.amount);
     }
     this.partC.tick();
+    this.tracers.tick();
 
     // bases
     const bar = (clip: Clip, side: Side) => {
@@ -502,6 +507,7 @@ export class GameScene extends Container {
 
   destroyScene() {
     this.partC.clear();
+    this.tracers.clear();
     this.destroy({ children: true });
   }
   /** used by the shell to hide the HUD during overlays */

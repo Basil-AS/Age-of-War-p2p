@@ -69,6 +69,7 @@ export const app = $state({
   musicOn: read('aow.music', '1') === '1',
   compat: read('aow.compat', '0') === '1',
   smartAi: read('aow.smartai', '1') === '1',
+  autoPause: read('aow.autopause', '1') === '1',
   speed: 1,
   lobby: {
     role: 'host' as 'host' | 'guest',
@@ -117,6 +118,11 @@ export function setLang(l: Lang) {
   app.lang = l;
   document.documentElement.lang = l;
   write('aow.lang', l);
+}
+export function setAutoPause(on: boolean) {
+  app.autoPause = on;
+  write('aow.autopause', on ? '1' : '0');
+  if (orig) orig.autoPause = on;
 }
 export function setName(n: string) {
   app.name = n.slice(0, 16);
@@ -171,6 +177,7 @@ export async function boot(canvas: HTMLCanvasElement) {
       `${import.meta.env.BASE_URL}orig/`,
     );
     await orig.init(canvas, { webgpu: new URLSearchParams(location.search).has('gpu') });
+    orig.autoPause = app.autoPause;
     orig.audio.setSfx(app.sfx);
     orig.audio.setMusicVolume(app.music);
     orig.audio.setMusicOn(app.musicOn);

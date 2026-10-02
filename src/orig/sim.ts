@@ -471,6 +471,17 @@ export class OrigSim {
       if (!t) return;
       t.health -= (op[0] === 'hit' ? u.damage : u.rangeDamage) - this.r01() * 2;
       const tt = t as Unit;
+      // the original draws no projectile for ranged infantry (damage is instant); we add a cosmetic tracer so shots are visible
+      if (op[0] === 'rhit' && this.emit)
+        this.ev({
+          k: 'shot',
+          unit: u.id,
+          side: u.side,
+          x1: u.x + (u.side === 1 ? 22 : -22),
+          y1: u.y - u.h * 0.62,
+          x2: t.x,
+          y2: t.isBase ? t.y - 30 : t.y - ((t as Unit).h || 40) * 0.6,
+        });
       if (!t.isBase && tt.id !== 12) this.part(2, t.x, t.y - tt.h / 1.5, 5);
     }
   }

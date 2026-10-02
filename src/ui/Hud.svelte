@@ -144,6 +144,14 @@
                   {#if s.id}
                     <div class="who"><b>{tname(s.id)}</b></div>
                     <button class="aw-btn small" data-testid="sell" onclick={() => sell(s.spot)}>{tr('sell')} +{refund(s.id)}</button>
+                    <div class="who">{tr('priceList')}</div>
+                    {#each h.turrets as t, ti}
+                      <div class="opt off info" data-testid="price-turret-{ti + 1}">
+                        {#if app.icons[`t${t.id}`]}<img src={app.icons[`t${t.id}`]} alt="" />{:else}<span>🏹</span>{/if}
+                        <span class="nm">{tname(t.id)}</span>
+                        <span class="cost"><i class="aw-coin"></i>{fmt(t.cost)}</span>
+                      </div>
+                    {/each}
                   {:else}
                     <div class="who">{tr('emptySlot')}</div>
                     {#each h.turrets as t, ti}
@@ -243,6 +251,7 @@
   .pop .who { font-size: 12px; text-align: center; font-weight: 800; }
   .opt { position: relative; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 10px; border: 2px solid var(--aw-line); background: linear-gradient(180deg, #f4e1b4, #d8b877); color: var(--aw-ink); font-weight: 800; font-size: 12px; text-align: left; cursor: pointer; }
   .opt img { width: 34px; height: 28px; object-fit: contain; }
+  .opt.info { filter: none; cursor: default; }
   .opt.off { filter: grayscale(0.7) brightness(0.75); cursor: not-allowed; }
   .opt .cost { position: static; color: #3b2300; }
   .opt .key { position: static; }

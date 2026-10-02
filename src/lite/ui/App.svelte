@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, boot, buySlot, buyTurret, buyUnit, evolve, getMatch, sellLast, special, toggleMenu } from '../lib/app.svelte';
+  import { keyName } from '../../lib/keys';
   import { unitsOfAge, turretsOfAge } from '../sim/data';
   import Hud from './Hud.svelte';
   import Lobby from './Lobby.svelte';
@@ -15,7 +16,7 @@
     const m = getMatch();
     if (!m) return;
     const age = m.sim.players[m.side].age;
-    const k = e.key.toLowerCase();
+    const k = keyName(e);
     if (k === 'escape') return toggleMenu();
     if (app.menuOpen) return;
     if (k >= '1' && k <= '4') { const u = unitsOfAge(age)[Number(k) - 1]; if (u) buyUnit(u.id); }

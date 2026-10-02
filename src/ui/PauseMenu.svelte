@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app, leave, setLang, setMusicOn, setMusicVol, setSfx, setSpeed, toggleMenu, tr } from '../lib/app.svelte';
+  import { app, leave, setLang, setMusicOn, setMusicVol, setAutoPause, setSfx, setSpeed, toggleMenu, tr } from '../lib/app.svelte';
   import LangSwitch from './LangSwitch.svelte';
   import VersionSwitch from './VersionSwitch.svelte';
   const goFull = () => document.documentElement.requestFullscreen?.().catch(() => {});
@@ -18,6 +18,7 @@
       <div class="flex items-center gap-2"><span class="font-bold w-20 shrink-0">{tr('speed')}</span>
         {#each [1, 2, 3] as s}<button class="aw-chip {app.speed === s ? 'on' : ''}" onclick={() => setSpeed(s)}>{s}×</button>{/each}</div>
     {/if}
+    <label class="flex items-center justify-between"><span class="font-bold">{tr('autoPause')}</span><input type="checkbox" class="size-5 accent-amber-400" checked={app.autoPause} onchange={(e) => setAutoPause(e.currentTarget.checked)} /></label>
     <button class="aw-btn wood small" onclick={goFull}>⛶ {tr('fullscreen')}</button>
     <div class="aw-glass p-3 text-xs leading-relaxed"><b>{tr('hotkeys')}</b><br />{tr('hk1')} · {tr('hk2')} · {tr('hk3')}<br />{tr('hk4')}</div>
     <button class="aw-btn wood" data-testid="leave" onclick={leave}>{tr('leave')}</button>

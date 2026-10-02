@@ -86,6 +86,8 @@ export type Ev =
   | { k: 'part'; id: number; x: number; y: number; params: number[] }
   | { k: 'snd'; id: number; x: number }
   | { k: 'shake'; amount: number }
+  /** a ranged unit fired (cosmetic tracer): unit type, muzzle → target */
+  | { k: 'shot'; unit: number; side: Side; x1: number; y1: number; x2: number; y2: number }
   | { k: 'cash'; side: Side; x: number; y: number; amount: number }
   | { k: 'unit'; uid: number; id: number; side: Side }
   | { k: 'end'; winner: Side };
