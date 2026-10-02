@@ -1,6 +1,6 @@
 import { FPS, OrigSim, type SimOpts } from '../orig/sim';
 import type { Cmd, OrigData, Side } from '../orig/types';
-import { Lockstep, type MatchStatus } from './lockstep';
+import { Lockstep, MAX_CATCHUP_MS, type MatchStatus } from './lockstep';
 import type { Msg, Transport } from './transport';
 
 const TICK_MS = 1000 / FPS;
@@ -41,7 +41,7 @@ export class SoloMatch implements Match {
     this.pending.push(c);
   }
   update(now: number) {
-    const dt = Math.min(250, Math.max(0, now - (this.last || now)));
+    const dt = Math.min(MAX_CATCHUP_MS, Math.max(0, now - (this.last || now)));
     this.last = now;
     this.acc += dt * this.speed;
     while (this.acc >= TICK_MS && !this.sim.winner) {

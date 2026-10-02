@@ -3,6 +3,7 @@ import { SIM_HZ } from '../sim/data';
 import type { Sim } from '../sim/sim';
 import type { Cmd, Side } from '../sim/types';
 
+export const MAX_CATCHUP_MS = 1500; // keep real-time speed on slow-rendering devices
 export const TURN_TICKS = 4; // one network turn = 4 sim ticks ≈ 98 ms
 const TICK_MS = 1000 / SIM_HZ;
 const HASH_EVERY = 5; // turns
@@ -97,7 +98,7 @@ export class Lockstep {
 
   /** Advance the simulation to wall-clock time `now` (ms). Returns number of ticks executed. */
   update(now: number, speed = 1): number {
-    const dt = Math.min(250, Math.max(0, now - (this.last || now)));
+    const dt = Math.min(MAX_CATCHUP_MS, Math.max(0, now - (this.last || now)));
     this.last = now;
     if (now - this.pingAt > 2000) {
       this.pingAt = now;

@@ -2,6 +2,13 @@ import { FPS, type OrigSim } from '../orig/sim';
 import type { Cmd, Side } from '../orig/types';
 import type { Msg, Transport } from './transport';
 
+/**
+ * Longest wall-clock gap one update() will catch up. Rendering can be slow on weak devices (a frame
+ * every few hundred ms); the simulation is cheap, so it must keep real-time speed by running several
+ * ticks per rendered frame instead of dropping into slow motion.
+ */
+export const MAX_CATCHUP_MS = 1500;
+
 export const TURN_TICKS = 4; // one network turn = 4 sim ticks ≈ 98 ms
 const TICK_MS = 1000 / FPS;
 const HASH_EVERY = 5; // turns
@@ -98,7 +105,7 @@ export class Lockstep {
 
   /** Advance the simulation to wall-clock time `now` (ms). Returns number of ticks executed. */
   update(now: number, speed = 1): number {
-    const dt = Math.min(250, Math.max(0, now - (this.last || now)));
+    const dt = Math.min(MAX_CATCHUP_MS, Math.max(0, now - (this.last || now)));
     this.last = now;
     if (now - this.pingAt > 2000) {
       this.pingAt = now;

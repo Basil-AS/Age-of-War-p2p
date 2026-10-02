@@ -39,6 +39,8 @@ export class OrigApp {
   private loadingBuckets = new Set<number>();
   private keyHandler = (e: KeyboardEvent) => this.onKey(e);
   private fit = 1;
+  /** `?norender` — logic only (no drawing): lets tests measure netcode without a GPU, same path as a hidden tab */
+  private noRender = new URLSearchParams(location.search).has('norender');
 
   constructor(
     private hooks: OrigHooks,
@@ -76,6 +78,7 @@ export class OrigApp {
     this.layout();
     this.showTitle();
     this.start();
+    if (this.noRender) this.app.ticker.stop();
   }
 
   /** logical 650x450 stage coordinates → page (CSS pixel) coordinates (used by tests and overlays) */
@@ -180,7 +183,8 @@ export class OrigApp {
 
   private start() {
     startKeepAlive(() => {
-      if (document.hidden && this.match?.online && !this.paused) this.match.update(performance.now());
+      if ((document.hidden || this.noRender) && this.match?.online && !this.paused)
+        this.match.update(performance.now());
     });
     this.app.ticker.add((t) => {
       const now = performance.now();

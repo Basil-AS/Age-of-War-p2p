@@ -3,7 +3,7 @@ import { OriginalAI } from '../sim/ai';
 import { SIM_HZ } from '../sim/data';
 import { Sim } from '../sim/sim';
 import type { Cmd, Difficulty, Side } from '../sim/types';
-import { Lockstep, type MatchStatus } from './lockstep';
+import { Lockstep, MAX_CATCHUP_MS, type MatchStatus } from './lockstep';
 
 const TICK_MS = 1000 / SIM_HZ;
 
@@ -44,7 +44,7 @@ export class SoloMatch implements Match {
     this.pending.push(c);
   }
   update(now: number) {
-    const dt = Math.min(250, Math.max(0, now - (this.last || now)));
+    const dt = Math.min(MAX_CATCHUP_MS, Math.max(0, now - (this.last || now)));
     this.last = now;
     this.acc += dt * this.speed;
     while (this.acc >= TICK_MS && this.sim.winner === -1) {
